@@ -1,0 +1,8 @@
+.idea
+target
+*.bak
+.*.swp
+*~
+*.log
+*_run
+*.txt

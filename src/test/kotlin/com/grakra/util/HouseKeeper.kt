@@ -43,7 +43,6 @@ class HouseKeeper() {
 
   fun shutdown() {
     Result.wrap {
-
       choreScheduler.shutdown();
       choreScheduler.awaitTermination(0, TimeUnit.MILLISECONDS);
       group.shutdownGracefully();

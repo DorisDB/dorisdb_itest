@@ -22,7 +22,7 @@ class ConnectionPool<T : Connection>(
   val ok = AtomicInteger(0)
   val err = AtomicInteger(0)
 
-  private fun getCxn():T {
+  private fun getCxn(): T {
     var cxn = queue.poll()
     if (cxn == null || capacity <= 0) {
       return newCxnCb()
@@ -30,11 +30,26 @@ class ConnectionPool<T : Connection>(
     return cxn
   }
 
-  private fun returnCxn(cxn:T) {
+  private fun returnCxn(cxn: T) {
     if (capacity <= 0 || !queue.offer(cxn)) {
       Result.b.wrap {
         cxn.close()
       }
+    }
+  }
+
+
+  fun <R> exec_once(cb: (T) -> R): Result<R> {
+    val cxn = getCxn()
+    return Result.b wrap {
+      cb(cxn)
+    } onErr {
+      err.incrementAndGet()
+    } onOk {
+      ok.incrementAndGet()
+    } onAny {
+      total.incrementAndGet()
+      Result.wrap{cxn.close()}
     }
   }
 
@@ -43,6 +58,9 @@ class ConnectionPool<T : Connection>(
     return Result.b wrap {
       cb(cxn)
     } onErr {
+      Result.b.wrap {
+        cxn.close()
+      }
       err.incrementAndGet()
     } onOk {
       ok.incrementAndGet()

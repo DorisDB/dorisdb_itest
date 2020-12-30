@@ -1,10 +1,17 @@
 package com.grakra.util
 
+import com.github.rholder.retry.BlockStrategies
+import com.github.rholder.retry.RetryerBuilder
+import com.github.rholder.retry.StopStrategies
+import com.github.rholder.retry.WaitStrategies
+import com.google.common.base.Strings
 import com.grakra.TestMethodCapture
 import org.slf4j.LoggerFactory
 import org.testng.Assert
 import java.io.*
-import java.net.*
+import java.net.InetAddress
+import java.net.InetSocketAddress
+import java.net.Socket
 import java.nio.channels.FileLock
 import java.nio.channels.ServerSocketChannel
 import java.nio.file.Files
@@ -12,7 +19,14 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.attribute.PosixFilePermissions
 import java.util.*
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.locks.LockSupport
+import kotlin.math.abs
+import kotlin.reflect.KFunction1
+import kotlin.reflect.jvm.javaMethod
 import kotlin.streams.toList
+
 
 /**
  * Created by grakra on 18-8-30.
@@ -27,6 +41,9 @@ object Util {
       }
     }
   }
+
+  fun padLeading(s: String, c: Char, n: Int) =
+      (Strings.repeat("$c", n) + s).takeLast(n)
 
   fun createPropertiesConfFile(path: String, props: Map<String, String>) {
     createPropertiesConfFile(path, props.entries.map { e -> e.key to e.value })
@@ -154,6 +171,20 @@ object Util {
     }.toTypedArray()
   }
 
+  fun randLong(bound: Long): () -> Long {
+    val r = Random()
+    return {
+      abs(r.nextLong() % bound)
+    }
+  }
+
+  fun randInt(bound: Int): () -> Int {
+    val r = Random()
+    return {
+      abs(r.nextInt(bound))
+    }
+  }
+
   fun isPortAlive(host: String, port: Int): Boolean {
     val boxed = Result.wrap {
       val sock = Socket()
@@ -170,6 +201,10 @@ object Util {
   fun isPortDead(host: String, port: Int) = !isPortAlive(host, port)
   fun isPortDead(port: Int) = isPortDead("127.0.0.1", port)
 
+  fun ensure(times: Int, failMsg: String, cb: () -> Boolean) {
+    ensure(cb, failMsg, times)
+  }
+
   fun ensure(cb: () -> Boolean, failMsg: String, times: Int = 60) {
     val rand = Random()
     for (i in (0..times)) {
@@ -178,7 +213,7 @@ object Util {
       if (!boxed.isOk(true)) continue
       if (boxed.unwrap()) return
     }
-    Assert.fail(failMsg)
+    Assert.fail("$failMsg, after 60 times")
   }
 
   fun ensurePortAlive(host: String, port: Int, failMsg: String) {
@@ -261,6 +296,59 @@ object Util {
       val b = Math.abs(Random().nextInt()) % l
       if (a < b) a to b else b to a
     }
+  }
+
+  fun dump(e: Throwable) {
+    var err = e
+    while (true) {
+      err.printStackTrace()
+      if (err.cause == null) {
+        break
+      } else {
+        println("caused by: ")
+        err = err.cause!!
+      }
+    }
+  }
+
+
+  fun <T> retry(f: () -> T): T {
+    val retryer = RetryerBuilder.newBuilder<T>()
+        .retryIfException()
+        .withStopStrategy(StopStrategies.stopAfterAttempt(3))
+        .withBlockStrategy(BlockStrategies.threadSleepStrategy())
+        .withWaitStrategy(WaitStrategies.exponentialWait(2000, 10, TimeUnit.SECONDS))
+        .build()
+    return Result.wrap {
+      retryer.call(f)
+    }.onErr {
+      dump(it)
+    }.unwrap()
+  }
+
+  fun <T> roundRobin(elms: List<T>): () -> T {
+    Assert.assertTrue(elms.isNotEmpty())
+    var i = AtomicInteger(0);
+    return {
+      elms[abs(i.getAndIncrement() % elms.size)]
+    }
+  }
+
+  fun timed(timeout: Long, interval: Long, unit: TimeUnit, f: () -> Boolean): Boolean {
+    val startMs = System.currentTimeMillis()
+    val deadLine = startMs + unit.toMillis(timeout)
+    while (true) {
+      if (f()) {
+        return true
+      }
+      val nowMs = System.currentTimeMillis()
+      if (nowMs > deadLine) {
+        return false
+      }
+      println("Timed elapse=${(nowMs - startMs) / 1000}s, remain=${(deadLine - nowMs) / 1000}s")
+      LockSupport.parkNanos(unit.toNanos(interval))
+    }
+    return false
   }
 
   fun getClassPathOfJavaClass(clz: Class<*>) =

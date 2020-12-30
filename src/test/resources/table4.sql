@@ -1,13 +1,18 @@
 use db0;
-CREATE TABLE if not exists table3
+CREATE TABLE if not exists table4
 (
   event_day DATE,
+  f0 LARGEINT DEFAULT '10',
+  f1 LARGEINT DEFAULT '10',
+  f2 LARGEINT DEFAULT '10',
+  f3 LARGEINT DEFAULT '10',
+  f4 LARGEINT DEFAULT '10',
   siteid INT DEFAULT '10',
   citycode SMALLINT,
   username VARCHAR(32) DEFAULT '',
   pv BIGINT DEFAULT '0'
 )
-DUPLICATE KEY(event_day, siteid, citycode, username)
+DUPLICATE KEY(event_day, f0, f1, f2, f3, f4, siteid, citycode, username)
 PARTITION BY RANGE(event_day)
 (
   PARTITION p20170701 VALUES LESS THAN ('2017-07-02'),
@@ -22,4 +27,7 @@ PARTITION BY RANGE(event_day)
   PARTITION p20170710 VALUES LESS THAN ('2017-07-11')
 )
 DISTRIBUTED BY HASH(siteid) BUCKETS 8
-PROPERTIES("replication_num" = "3");
+PROPERTIES(
+    "replication_num" = "3",
+    "short_key" = "9"
+);

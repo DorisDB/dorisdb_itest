@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit
 import javax.sql.DataSource
 
 object MySQLUtil {
-  fun getDataSource(driver: Driver, cxnString: String): DataSource {
+  fun getDataSource(driver: Driver, cxnString: String): SimpleDriverDataSource {
     return SimpleDriverDataSource(driver, cxnString)
   }
 

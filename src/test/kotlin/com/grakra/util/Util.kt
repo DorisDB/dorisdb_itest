@@ -13,6 +13,7 @@ import org.apache.hadoop.hive.serde2.io.HiveDecimalWritable
 import org.apache.orc.OrcFile
 import org.apache.orc.TypeDescription
 import org.slf4j.LoggerFactory
+import org.stringtemplate.v4.STGroupString
 import org.testng.Assert
 import java.io.*
 import java.math.BigDecimal
@@ -22,6 +23,7 @@ import java.net.InetSocketAddress
 import java.net.Socket
 import java.nio.channels.FileLock
 import java.nio.channels.ServerSocketChannel
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -30,6 +32,7 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.LockSupport
+import java.util.stream.Collectors
 import kotlin.math.abs
 import kotlin.streams.toList
 
@@ -67,7 +70,12 @@ object Util {
         val maxValue = BigInteger(Strings.repeat("9", precision))
         val randomBigInt = generateRandomBigInt(negRatio)
         return {
-            BigDecimal(randomBigInt().mod(maxValue), scale)
+            val bigInt = randomBigInt()
+            if (bigInt.signum() < 0) {
+                BigDecimal(bigInt.mod(maxValue), scale).negate()
+            } else {
+                BigDecimal(bigInt.mod(maxValue), scale)
+            }
         }
     }
 
@@ -149,7 +157,7 @@ object Util {
                 TypeDescription.Category.CHAR,
                 TypeDescription.Category.BINARY -> {
                     val binaryVector = vector as BytesColumnVector
-                    String(binaryVector.vector[i],Charsets.UTF_8).take(10)+"..."
+                    String(binaryVector.vector[i], Charsets.UTF_8).take(10) + "..."
                 }
                 TypeDescription.Category.BOOLEAN,
                 TypeDescription.Category.BYTE,
@@ -551,5 +559,26 @@ object Util {
         }
 
         return segments.toIntArray()
+    }
+
+    fun renderTemplate(
+            template: String,
+            mainTemplateName: String,
+            parameters: Map<String, Any>): String {
+        val st = STGroupString(template).getInstanceOf(mainTemplateName)
+        val requiredKeys = st.attributes.keys
+        val actualKeys = parameters.keys
+        if (!actualKeys.containsAll(requiredKeys)) {
+            requiredKeys.removeAll(actualKeys)
+            val missingKeys = requiredKeys.stream().map { k: String -> "'$k'" }.collect(Collectors.joining(", "))
+            throw Exception("Missing keys: $missingKeys")
+        }
+        parameters.forEach { (k: String, v: Any) -> st.add(k, v) }
+        return st.render()
+    }
+
+    fun renderTemplate(templateName: String, vararg parameters: Pair<String, Any>): String {
+        val template = String(this.javaClass.classLoader.getResourceAsStream(templateName).readAllBytes()!!, StandardCharsets.UTF_8)
+        return renderTemplate(template, "main", parameters.toMap())
     }
 }

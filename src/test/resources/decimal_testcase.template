@@ -1,0 +1,13 @@
+array_to_string(array) ::= <<
+{<array:{elm|"<elm>"}; separator=", ">}
+>>
+
+array2d_to_string(array2d) ::= <<
+{
+<array2d:{array|<\ ><\ ><\ ><\ ><array_to_string(array)>}; separator=",\n">
+}
+>>
+
+main(test_cases) ::= <<
+DecimalTestCaseArray test_cases = <array2d_to_string(test_cases)>;
+>>

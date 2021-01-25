@@ -1,0 +1,21 @@
+array_to_string(array) ::= <<
+{<array:{elm|"<elm>"}; separator=", ">}
+>>
+
+array2d_to_string(array2d) ::= <<
+{
+<array2d:{array|<\ ><\ ><\ ><\ ><array_to_string(array)>}; separator=",\n">
+}
+>>
+
+main(binary_op, primitive_type, precisions_and_scales, test_cases) ::= <<
+DecimalTestCaseArray test_cases = <array2d_to_string(test_cases)>;
+test_vector_vector \< <primitive_type>, <binary_op>, true \> (test_cases, <precisions_and_scales:{e|<e>}; separator=", ">);
+test_vector_vector\< <primitive_type>, <binary_op>, false \> (test_cases, <precisions_and_scales:{e|<e>}; separator=", ">);
+test_vector_const \< <primitive_type>, <binary_op>, true \> (test_cases, <precisions_and_scales:{e|<e>}; separator=", ">);
+test_vector_const \< <primitive_type>, <binary_op>, false \> (test_cases, <precisions_and_scales:{e|<e>}; separator=", ">);
+test_const_vector \< <primitive_type>, <binary_op>, true \> (test_cases, <precisions_and_scales:{e|<e>}; separator=", ">);
+test_const_vector \< <primitive_type>, <binary_op>, false \> (test_cases, <precisions_and_scales:{e|<e>}; separator=", ">);
+test_const_const \< <primitive_type>, <binary_op>, true \> (test_cases, <precisions_and_scales:{e|<e>}; separator=", ">);
+test_const_const \< <primitive_type>, <binary_op>, false \> (test_cases, <precisions_and_scales:{e|<e>}; separator=", ">);
+>>

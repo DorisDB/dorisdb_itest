@@ -1,0 +1,14 @@
+one_test_case(tc) ::= <<
+{<tc.inputPrecision>, <tc.inputScale>, "<tc.inputValue>", <tc.outputPrecision>, <tc.outputScale>, "<tc.outputValue>", "<tc.nullValue>" }
+>>
+all_test_cases(tcList) ::=<<
+<tcList:{tc|<one_test_case(tc)>}; separator=",\n">
+>>
+main(testCases, fromType, toType, name) ::= <<
+TEST_F(VectorizedDecimalCastExprTest, <name>) {
+    CastTestCaseArray test_cases = {
+    <all_test_cases(testCases)>
+    };
+    test_cast_all\<<fromType>, <toType>\>(test_cases);
+}
+>>

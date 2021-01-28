@@ -149,6 +149,36 @@ object Util {
         writer.close()
     }
 
+    fun generateCounter(limit: Int): () -> Int {
+        var n = -1
+        return {
+            n += 1
+            n %= limit
+            n
+        }
+    }
+
+    fun generateCounter(): () -> Int = generateCounter(Int.MAX_VALUE)
+
+    fun generateCounterRange(from: Int, till: Int): () -> Int {
+        val counter = generateCounter(till - from)
+        return { counter() + from }
+    }
+
+    fun generateCounterFrom(from: Int) = generateCounterRange(from, Int.MAX_VALUE)
+
+    fun suffixCounter(prefix: String, counter: () -> Int): () -> String {
+        return {
+            "$prefix${counter()}"
+        }
+    }
+
+    fun prefixCounter(suffix: String, counter: () -> Int): () -> String {
+        return {
+            "${counter()}${suffix}"
+        }
+    }
+
     fun nthItemOfColumn(vector: ColumnVector, desc: TypeDescription): (i: Int) -> String {
         return { i ->
             when (desc.category) {

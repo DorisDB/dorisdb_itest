@@ -85,7 +85,7 @@ class MultiDecimalITest : DorisDBRemoteITest() {
         val table = "decimal_table0"
         run_mysql{c->
             c.q(db){sql->
-                sql.q("select (decimal32 + decimal32) as result  from $table")!!.forEach {rows->
+                sql.q("select decimal64, decimal64, (decimal64 + decimal64) as result  from $table")!!.forEach {rows->
                     rows.entries.joinToString { (k,v)->"$k=$v" }.let{println(it)}
                 }
             }

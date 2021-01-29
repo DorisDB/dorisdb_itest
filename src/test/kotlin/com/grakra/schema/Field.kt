@@ -11,6 +11,7 @@ abstract sealed class SimpleField(override val name: String) : Field(name) {
         fun decimal(name: String, bits: Int, precision: Int, scale: Int) = DecimalField(name, bits, precision, scale)
 
     }
+
     fun precisionAndScale(): Pair<Int, Int> {
         return when (this) {
             is FixedLengthField -> {
@@ -37,7 +38,14 @@ abstract sealed class SimpleField(override val name: String) : Field(name) {
         val (p, s) = precisionAndScale()
         val pType = primitiveType().substring("TYPE_".length).toLowerCase().capitalize()
         return when (this) {
-            is DecimalField -> "${pType}P${p}S${s}"
+            is FixedLengthField -> when (this.type) {
+                FixedLengthType.TYPE_TINYINT -> "TinyInt"
+                FixedLengthType.TYPE_SMALLINT -> "SmallInt"
+                FixedLengthType.TYPE_BIGINT -> "BigInt"
+                FixedLengthType.TYPE_LARGEINT -> "LargeInt"
+                else -> pType
+            }
+            is DecimalField -> "${pType}p${p}s${s}"
             else -> pType
         }
     }

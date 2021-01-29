@@ -11,11 +11,28 @@ import kotlin.math.abs
 object RandUtil {
     fun generateRandomInteger(bits: Int, negRatio: Int): () -> BigInteger {
         val rand = Random()
+        val max = DecimalUtil.max_bin_integer(bits)
+        val min = DecimalUtil.min_bin_integer(bits)
         return {
             if (rand.nextInt(100) < negRatio) {
-                BigInteger(bits, rand).negate()
+                when (val randBits = rand.nextInt(bits)) {
+                    bits - 1 -> min
+                    else -> {
+                        BigInteger.ONE.shiftLeft(randBits).add(BigInteger(randBits, rand)).negate()
+                    }
+                }
             } else {
-                BigInteger(bits, rand)
+                when (val randBits = rand.nextInt(bits + 1)) {
+                    0 -> {
+                        BigInteger.ZERO
+                    }
+                    bits -> {
+                        max
+                    }
+                    else -> {
+                        BigInteger.ONE.shiftLeft(randBits - 1).add(BigInteger(randBits - 1, rand))
+                    }
+                }
             }
         }
     }
@@ -94,9 +111,9 @@ object RandUtil {
 
     fun generateRandomDouble(): () -> Double {
         val rand = Random()
-        val genLong  = generateRandomBigInt(50)
+        val genLong = generateRandomBigInt(50)
         return {
-            rand.nextDouble()*genLong()
+            rand.nextDouble() * genLong()
         }
     }
 

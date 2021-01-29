@@ -28,4 +28,10 @@ class TestRandUtil {
             println("ts=$ts, date=$date, varchar=$varchar, tinyInt=$tinyInt, boolean=$boolean, smallInt=$smallInt, int=$int, bigInt=$bigInt")
         }
     }
+
+    @Test
+    fun test(){
+        val intGen = RandUtil.generateRandomInt(50)
+        (0..100).forEach { _ -> println(intGen()) }
+    }
 }

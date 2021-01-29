@@ -4,11 +4,11 @@ one_test_case(tc) ::= <<
 all_test_cases(tcList) ::=<<
 <tcList:{tc|<one_test_case(tc)>}; separator=",\n">
 >>
-main(testCases, fromType, toType, name) ::= <<
-TEST_F(VectorizedDecimalCastExprTest, <name>) {
+main(testCases, fromType, toType, name, category, fail) ::= <<
+TEST_F(VectorizedDecimalCastExpr<category>Test, <name>) {
     CastTestCaseArray test_cases = {
     <all_test_cases(testCases)>
     };
-    test_cast_all\<<fromType>, <toType>\>(test_cases);
+    test_cast_all<fail>\<<fromType>, <toType>\>(test_cases);
 }
 >>

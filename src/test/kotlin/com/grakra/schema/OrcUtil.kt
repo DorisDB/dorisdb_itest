@@ -14,6 +14,7 @@ import java.math.BigDecimal
 import java.nio.file.Files
 import java.sql.Date
 import java.sql.Timestamp
+import java.util.*
 
 object OrcUtil {
     fun field2OrcTypeDecription(f: Field): TypeDescription {
@@ -94,7 +95,8 @@ object OrcUtil {
         }.toList()
     }
 
-    fun getDefaultGeneratorsForOrc(fields: List<Field>): Map<String, () -> Any> {
+
+    fun getDefaultValueGeneratorsForOrc(fields: List<Field>): Map<String, () -> Any> {
         val generators = getDefaultGenerators(fields)
         val largeIntFields = getNamesOfLargeIntFields(fields).toSet()
         return generators.map { (name, gen) ->
@@ -106,7 +108,12 @@ object OrcUtil {
         }.toMap()
     }
 
-
+    fun getDefaultKeyGeneratorsForOrc(fields: List<Field>): Map<String, () -> Any> {
+        val generators = getDefaultValueGeneratorsForOrc(fields)
+        return generators.map { (key, gen) ->
+            key to RandUtil.getFiniteSetGenerator(20, gen)
+        }.toMap()
+    }
 
     fun generateSetOrcCell(cv: ColumnVector, f: Field, generator: () -> Any, chunkMaxSize: Int): () -> Unit {
         val idx = Util.generateCounter(chunkMaxSize)
@@ -207,10 +214,13 @@ object OrcUtil {
         }
     }
 
-    fun generateAppendChunk(fields: List<Field>, chunkMaxSize: Int): (Int) -> VectorizedRowBatch {
+    fun generateAppendChunk(keyFields: List<SimpleField>, valueFields: List<Field>, chunkMaxSize: Int): (Int) -> VectorizedRowBatch {
+        val fields = keyFields + valueFields;
         val schema = createOrcSchemaFromFields(fields)
         val rowBatch = schema.createRowBatch(chunkMaxSize)
-        val generators = getDefaultGeneratorsForOrc(fields)
+        val keyGenerators = getDefaultKeyGeneratorsForOrc(keyFields)
+        val valueGenerators = getDefaultValueGeneratorsForOrc(valueFields)
+        val generators = keyGenerators + valueGenerators
         val fieldArray = fields.toTypedArray()
         val setCells = (0 until rowBatch.numCols).map { c ->
             generateSetOrcCell(rowBatch.cols[c], fieldArray[c], generators.getValue(fieldArray[c].name), chunkMaxSize)
@@ -226,18 +236,26 @@ object OrcUtil {
         }
     }
 
-    fun createOrcFile(path: String, fields: List<Field>, rowsNum: Int, maxChunkSize: Int) {
+    fun createOrcBrokerLoadSql(db: String, table: Table, hdfsPath: String): String {
+        return Util.renderTemplate("broker_load.sql.template",
+                "db" to db,
+                "table" to table.tableName,
+                "labelId" to System.currentTimeMillis().toString(),
+                "hdfsPath" to hdfsPath,
+                "format" to "orc",
+                "columnList" to (table.keyFields() + table.valueFields(emptySet())).map { it.name })
+    }
+
+    fun createOrcFile(path: String, keyFields: List<SimpleField>, valueFields: List<Field>, rowsNum: Int, maxChunkSize: Int) {
         val conf = Configuration()
         val dfsPath = org.apache.hadoop.fs.Path(path)
         val file = File(path)
-        val schema = createOrcSchemaFromFields(fields);
+        val schema = createOrcSchemaFromFields(keyFields + valueFields);
         if (Files.exists(file.toPath())) {
             file.delete()
         }
         val writer = OrcFile.createWriter(dfsPath, OrcFile.writerOptions(conf).setSchema(schema))
-        val generators = getDefaultGeneratorsForOrc(fields)
-        val rowBatch = schema.createRowBatch()
-        val appendChunk = generateAppendChunk(fields, maxChunkSize)
+        val appendChunk = generateAppendChunk(keyFields, valueFields, maxChunkSize)
         val chunkSizes = Array(rowsNum / maxChunkSize) { maxChunkSize } + arrayOf(rowsNum % maxChunkSize)
         chunkSizes.forEach { chunkSize ->
             writer.addRowBatch(appendChunk(chunkSize))
@@ -299,12 +317,19 @@ object OrcUtil {
         }
     }
 
-    fun readOrcFile(path: String) {
+    fun readOrcFile(path: String, vararg fields: String) {
         val conf = Configuration()
         val dfsPath = org.apache.hadoop.fs.Path(path)
         val reader = OrcFile.createReader(dfsPath, OrcFile.ReaderOptions(conf))
         println(reader.schema)
         val rowBatch = reader.schema.createRowBatch()
+        val allFields = reader.schema.fieldNames
+        val fieldFilter = if (fields.isEmpty()) {
+            allFields.filterNotNull().toSet()
+        } else {
+            fields.toSet()
+        }
+        val fieldIndices = (0 until allFields.size).filter { i -> fieldFilter.contains(allFields[i]) }
         val columnFormatterGenerators = Array(reader.schema.fieldNames.size) {
             { vector: ColumnVector, desc: TypeDescription -> nthItemOfColumnWithNullCheck(vector, desc) }
         }
@@ -313,11 +338,11 @@ object OrcUtil {
         }
         val rows = reader.rows()
         while (rows.nextBatch(rowBatch)) {
-            for (c: Int in 0 until rowBatch.numCols) {
+            for (c: Int in fieldIndices) {
                 columnFormatters[c] = columnFormatterGenerators[c](rowBatch.cols[c], reader.schema.findSubtype(c + 1))
             }
             for (i: Int in 0 until rowBatch.size) {
-                for (c: Int in 0 until rowBatch.numCols) {
+                for (c: Int in fieldIndices) {
                     print("${columnFormatters[c](i.toInt())},\t")
                 }
                 println()

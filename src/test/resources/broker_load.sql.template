@@ -1,0 +1,10 @@
+main(db, table, labelId, hdfsPath, format, columnList) ::=<<
+USE <db>;
+LOAD LABEL <db>.label_<labelId> (
+DATA INFILE("hdfs://172.26.92.141:9002<hdfsPath>")
+INTO TABLE `<table>`
+FORMAT AS "<format>"
+(<columnList:{col|<col>}; separator=", ">)
+)
+WITH BROKER hdfs ("username"="root", "password"="");
+>>

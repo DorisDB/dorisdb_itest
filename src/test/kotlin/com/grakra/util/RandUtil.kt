@@ -45,6 +45,19 @@ object RandUtil {
         }
     }
 
+    fun getFiniteSetGenerator(n: Int, generator: () -> Any): () -> Any {
+        val finiteSet = mutableSetOf<Any>()
+        val rand = Random()
+        val setSize = n / 2 + rand.nextInt(n)
+        while (finiteSet.size < setSize) {
+            finiteSet.add(generator())
+        }
+        val finiteSetArray = finiteSet.toTypedArray()
+        return {
+            finiteSetArray[rand.nextInt(setSize)]
+        }
+    }
+
     fun generateRandomTinyInt(negRatio: Int): () -> Byte {
         val r = generateRandomInteger(8, negRatio)
         return { r().toByte() }

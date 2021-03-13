@@ -461,4 +461,26 @@ class GenerateDecimalCastTestCases {
         Assert.assertTrue(targetValue != null)
         Assert.assertTrue(targetValue == "22")
     }
+
+    @Test
+    fun testBigDecimalScaleAndPrecision(){
+        val ds = arrayOf(
+                "0",
+                "0.000",
+                "3.14",
+                "3.1415926",
+                "3.1400000",
+                "314.15",
+                "314.15000",
+                "0",
+                "0.000",
+                "-3.14",
+                "-3.1415926",
+                "-314.15",
+                "-314.15000"
+        )
+        ds.map { BigDecimal(it).stripTrailingZeros() }.forEach { d->
+            println("d=${d.toPlainString()}, precision=${d.precision()}, scale=${d.scale()}")
+        }
+    }
 }

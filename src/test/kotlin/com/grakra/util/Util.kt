@@ -47,6 +47,10 @@ object Util {
         return this.javaClass.classLoader.getResourceAsStream("$table.sql").bufferedReader().readText()
     }
 
+    fun squeezeWhiteSpaces(s: String): String {
+        return s.replace(Regex("[\n\r]"), " ").replace(Regex("\\s+"), " ").trim()
+    }
+
     fun createPropertiesConfFile(path: String, props: List<Pair<String, String>>) {
         createFile(path) { o ->
             props.forEach { e ->
@@ -610,5 +614,15 @@ object Util {
     fun renderTemplate(templateName: String, vararg parameters: Pair<String, Any>): String {
         val template = String(this.javaClass.classLoader.getResourceAsStream(templateName).readAllBytes()!!, StandardCharsets.UTF_8)
         return renderTemplate(template, "main", parameters.toMap())
+    }
+
+    fun listResource(subdir: String, filter: (File)->Boolean):List<File>{
+        val p = this.javaClass.classLoader.getResource(subdir).path
+        return File(p).listFiles()!!.filter(filter)
+    }
+    fun listResource(subdir: String, fileExt:String):List<File> {
+        return listResource(subdir){file->
+            file.isFile && file.name.endsWith(fileExt)
+        }
     }
 }

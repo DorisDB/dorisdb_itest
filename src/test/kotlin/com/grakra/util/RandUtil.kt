@@ -136,7 +136,8 @@ object RandUtil {
         val endDay = Date.valueOf(end).time / 86400000
 
         return {
-            Date((startDay + abs(rand.nextLong() % (endDay - startDay)) * 86400000))
+            val date = Date((startDay + abs(rand.nextLong() % (endDay - startDay))) * 86400000)
+            date
         }
     }
 

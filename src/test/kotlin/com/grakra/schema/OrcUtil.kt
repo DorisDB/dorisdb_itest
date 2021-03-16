@@ -10,10 +10,13 @@ import org.apache.hadoop.hive.serde2.io.HiveDecimalWritable
 import org.apache.orc.OrcFile
 import org.apache.orc.TypeDescription
 import java.io.File
+import java.io.OutputStream
+import java.io.PrintStream
 import java.math.BigDecimal
 import java.nio.file.Files
 import java.sql.Date
 import java.sql.Timestamp
+import java.text.SimpleDateFormat
 import java.util.*
 
 object OrcUtil {
@@ -31,11 +34,11 @@ object OrcUtil {
                     TYPE_DOUBLE -> TypeDescription.createDouble()
                     TYPE_DATE -> TypeDescription.createDate()
                     TYPE_DATETIME -> TypeDescription.createTimestamp()
-                    TYPE_DECIMALV2 -> TypeDescription.createDecimal().withScale(9).withPrecision(27)
                 }
                 is CharField -> TypeDescription.createChar().withMaxLength(f.len)
                 is VarCharField -> TypeDescription.createChar().withMaxLength(f.len)
                 is DecimalField -> TypeDescription.createDecimal().withScale(f.scale).withPrecision(f.precision)
+                is DecimalV2Field -> TypeDescription.createDecimal().withScale(9).withPrecision(27)
             }
             is CompoundField -> field2OrcTypeDecription(f.fld)
         }
@@ -63,11 +66,11 @@ object OrcUtil {
                     TYPE_DOUBLE -> RandUtil.generateRandomDouble()
                     TYPE_DATE -> RandUtil.generateRandomDate("1990-01-01", "2021-12-31")
                     TYPE_DATETIME -> RandUtil.generateRandomTimestamp("2001-01-01 00:00:00", "2021-12-31 00:00:00")
-                    TYPE_DECIMALV2 -> RandUtil.generateRandomDecimal(27, 9, 50)
                 }
-                is CharField -> RandUtil.generateRandomVarChar(RandUtil.lc() + RandUtil.uc() + RandUtil.digit(), 0, 255)
-                is VarCharField -> RandUtil.generateRandomVarChar(RandUtil.lc() + RandUtil.uc() + RandUtil.digit(), 0, 255)
+                is CharField -> RandUtil.generateRandomVarChar(RandUtil.lc() + RandUtil.uc() + RandUtil.digit(), 0, f.len)
+                is VarCharField -> RandUtil.generateRandomVarChar(RandUtil.lc() + RandUtil.uc() + RandUtil.digit(), 0, f.len)
                 is DecimalField -> RandUtil.generateRandomDecimal(f.precision, f.scale, 50)
+                is DecimalV2Field -> RandUtil.generateRandomDecimal(27, 9, 50)
             }
             is CompoundField -> field2DefaultGenerator(f.fld)
         }
@@ -163,23 +166,25 @@ object OrcUtil {
 
                 TYPE_DATE ->
                     return {
-                        (cv as LongColumnVector).vector[idx()] = (generator() as Date).time
+                        val date  = generator() as Date
+                        (cv as LongColumnVector).vector[idx()] = date.time / 86400000
                     }
                 TYPE_DATETIME ->
                     return {
                         (cv as TimestampColumnVector).set(idx(), generator() as Timestamp)
                     }
-                TYPE_DECIMALV2 ->
-                    return {
-                        (cv as DecimalColumnVector).vector[idx()] = HiveDecimalWritable(
-                                HiveDecimal.create(generator() as BigDecimal))
-                    }
+
             }
             is CharField, is VarCharField ->
                 return {
-                    (cv as BytesColumnVector).setVal(idx(), generator() as ByteArray)
+                    (cv as BytesColumnVector).setVal(idx(), String(generator() as ByteArray).toByteArray())
                 }
             is DecimalField ->
+                return {
+                    (cv as DecimalColumnVector).vector[idx()] = HiveDecimalWritable(
+                            HiveDecimal.create(generator() as BigDecimal))
+                }
+            is DecimalV2Field ->
                 return {
                     (cv as DecimalColumnVector).vector[idx()] = HiveDecimalWritable(
                             HiveDecimal.create(generator() as BigDecimal))
@@ -275,22 +280,28 @@ object OrcUtil {
     }
 
     fun nthItemOfColumn(vector: ColumnVector, desc: TypeDescription): (i: Int) -> String {
+        val timestampFmt = SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+        val dateFmt = SimpleDateFormat("yyyy-MM-dd")
         return { i ->
             when (desc.category) {
                 TypeDescription.Category.STRING,
                 TypeDescription.Category.VARCHAR,
                 TypeDescription.Category.CHAR,
                 TypeDescription.Category.BINARY -> {
-                    val binaryVector = vector as BytesColumnVector
-                    String(binaryVector.vector[i], Charsets.UTF_8).take(10) + "..."
+                    val bytesVector = vector as BytesColumnVector
+                    String(bytesVector.vector[i], bytesVector.start[i], bytesVector.length[i], Charsets.UTF_8)
                 }
-                TypeDescription.Category.BOOLEAN,
+                TypeDescription.Category.BOOLEAN->{
+                    val longVector = vector as LongColumnVector
+                    if (longVector.vector[i]==1L){"TRUE"}else{"FALSE"}
+                }
+
                 TypeDescription.Category.BYTE,
                 TypeDescription.Category.SHORT,
                 TypeDescription.Category.INT,
                 TypeDescription.Category.LONG -> {
-                    val byteVector = vector as LongColumnVector
-                    byteVector.vector[i].toString()
+                    val longVector = vector as LongColumnVector
+                    longVector.vector[i].toString()
                 }
                 TypeDescription.Category.FLOAT,
                 TypeDescription.Category.DOUBLE -> {
@@ -299,11 +310,13 @@ object OrcUtil {
                 }
                 TypeDescription.Category.DATE -> {
                     val dateVector = vector as LongColumnVector
-                    dateVector.vector[i].toString()
+                    val date = Date(dateVector.vector[i]*86400000)
+                    //date.time = dateVector.vector[i]
+                    dateFmt.format(date)
                 }
                 TypeDescription.Category.TIMESTAMP -> {
                     val datetimeVector = vector as TimestampColumnVector
-                    datetimeVector.getTime(i).toString()
+                    timestampFmt.format(datetimeVector.getTime(i))
                 }
                 TypeDescription.Category.DECIMAL -> {
                     val decimalVector = vector as DecimalColumnVector
@@ -346,6 +359,51 @@ object OrcUtil {
                     print("${columnFormatters[c](i.toInt())},\t")
                 }
                 println()
+            }
+        }
+        rows.close()
+    }
+
+    fun orcToCVSFile(orcPath: String, csvPath: String, vararg fields: String) {
+        Util.enclosedOutputStream(File(csvPath)) {
+            orcToCVSOutputStream(orcPath, it, *fields)
+        }
+    }
+
+    fun orcToCVS(orcPath: String, vararg fields: String) {
+        orcToCVSOutputStream(orcPath, System.out, *fields)
+    }
+
+    fun orcToCVSOutputStream(orcPath: String, csvOut: PrintStream, vararg fields: String) {
+        val conf = Configuration()
+        val dfsPath = org.apache.hadoop.fs.Path(orcPath)
+        val reader = OrcFile.createReader(dfsPath, OrcFile.ReaderOptions(conf))
+        //println(reader.schema)
+        val rowBatch = reader.schema.createRowBatch()
+        val allFields = reader.schema.fieldNames
+        val fieldFilter = if (fields.isEmpty()) {
+            allFields.filterNotNull().toSet()
+        } else {
+            fields.toSet()
+        }
+        val fieldIndices = (0 until allFields.size).filter { i -> fieldFilter.contains(allFields[i]) }
+        val columnFormatterGenerators = Array(reader.schema.fieldNames.size) {
+            { vector: ColumnVector, desc: TypeDescription -> nthItemOfColumnWithNullCheck(vector, desc) }
+        }
+        val columnFormatters = Array(reader.schema.fieldNames.size) {
+            { _: Int -> "" }
+        }
+        val rows = reader.rows()
+        while (rows.nextBatch(rowBatch)) {
+            for (c: Int in fieldIndices) {
+                columnFormatters[c] = columnFormatterGenerators[c](rowBatch.cols[c], reader.schema.findSubtype(c + 1))
+            }
+            for (i: Int in 0 until rowBatch.size) {
+                csvOut.print("${columnFormatters[fieldIndices.first()](i.toInt())}")
+                for (c: Int in fieldIndices.drop(1)) {
+                    csvOut.print(",${columnFormatters[c](i.toInt())}")
+                }
+                csvOut.println()
             }
         }
         rows.close()

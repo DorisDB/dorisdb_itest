@@ -174,7 +174,7 @@ class GenerateDecimalCastTestCases {
 
     fun getDecimalV2Fields(): List<SimpleField> {
         return listOf(
-                SimpleField.fixedLength("col_decimalv2", FixedLengthType.TYPE_DECIMALV2)
+                SimpleField.decimalv2("col_decimalv2", 27, 9)
         )
     }
 
@@ -240,8 +240,8 @@ class GenerateDecimalCastTestCases {
                 FixedLengthType.TYPE_DOUBLE -> value.toDouble().toString()
                 FixedLengthType.TYPE_DATE -> decimalToInteger(value, 32)?.let { intToDate(it.toInt()).toString() }
                 FixedLengthType.TYPE_DATETIME -> decimalToInteger(value, 64)?.let { sdfNoMs.format(longToTimestamp(it.toLong())) }
-                FixedLengthType.TYPE_DECIMALV2 -> decimalToDecimal(value, DecimalType(128, 27, 9))?.let { it.toString() }
             }
+            is DecimalV2Field -> decimalToDecimal(value, DecimalType(128, 27, 9))?.let{it.toString()}
             else -> null
         }
     }
@@ -447,7 +447,7 @@ class GenerateDecimalCastTestCases {
         val bigInteger = BigInteger("70141183460469231731687303715884105728")
         val decimal = BigDecimal(bigInteger, 0)
         val targetValue = toType(decimal, SimpleField.decimal("col0", 128, 38, 0),
-                SimpleField.fixedLength("col1", FixedLengthType.TYPE_DECIMALV2))
+                SimpleField.decimalv2("col1", 27, 9))
         Assert.assertEquals(targetValue, null)
         println(targetValue)
     }
@@ -481,6 +481,18 @@ class GenerateDecimalCastTestCases {
         )
         ds.map { BigDecimal(it).stripTrailingZeros() }.forEach { d->
             println("d=${d.toPlainString()}, precision=${d.precision()}, scale=${d.scale()}")
+        }
+    }
+
+    @Test
+    fun randomString(){
+        val gen = RandUtil.generateRandomDate("2021-01-01", "2021-01-31")
+        val dateFMT = SimpleDateFormat("yyyy-MM-dd")
+        (0..10).forEach {
+            val time = (gen() as Date).time
+            val date = Date();
+            date.time = time
+            println(dateFMT.format(date))
         }
     }
 }

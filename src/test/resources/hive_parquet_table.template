@@ -1,0 +1,15 @@
+csv(list) ::= <<
+<list:{v|<v>};separator=",\n">
+>>
+
+main(tableName, partition_fields, non_partition_fields, cluster_keys, sort_keys, num_buckets) ::= <<
+CREATE TABLE if not exists <tableName>
+(
+<csv(non_partition_fields)>
+)
+<if(partition_fields)>PARTITIONED BY(<csv(partition_fields)>)<endif>
+<if(cluster_keys)>CLUSTERED BY(<csv(cluster_keys)>)
+  <if(sort_keys)>SORTED_BY(<csv(sort_keys)>)<endif>
+  INTO <num_buckets> BUCKETS<endif>
+STORED AS PARQUET
+>>

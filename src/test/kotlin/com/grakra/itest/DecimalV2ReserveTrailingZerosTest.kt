@@ -19,7 +19,7 @@ class DecimalV2ReserveTrailingZerosTest : DorisDBRemoteITest() {
             tableName,
             listOf(
                     SimpleField.fixedLength("id_int", FixedLengthType.TYPE_INT),
-                    SimpleField.fixedLength("id_decimalv2", FixedLengthType.TYPE_DECIMALV2)
+                    SimpleField.decimalv2("id_decimalv2", 27, 9)
             ),
             1)
     val columnNames = table.fields.map { it.name }

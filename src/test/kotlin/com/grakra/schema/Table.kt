@@ -1,5 +1,6 @@
 package com.grakra.schema
 
+import com.google.common.base.Preconditions
 import com.grakra.util.Util
 
 class Table(val tableName: String, val fields: List<Field>, val keyLimit: Int) {
@@ -12,6 +13,21 @@ class Table(val tableName: String, val fields: List<Field>, val keyLimit: Int) {
                 "keys" to keys,
                 "replicaFactor" to 1)
 
+    }
+    fun hiveSql(format:String, partitionKeys:Array<String>, clusterKeys: Array<String>, sortKeys:Array<String>, numBuckets:Int):String{
+        val fieldsMap = fields.map{e->e.name to e}.toMap()
+        val partitionFields = partitionKeys.map{k->fieldsMap.getValue(k)}
+        val partitionKeySet = partitionKeys.toSet()
+        val nonPartitionFields = fields.filter{f->!partitionKeySet.contains(f.name)}
+        Preconditions.checkState(clusterKeys.none { n -> !fieldsMap.containsKey(n) })
+        Preconditions.checkState(sortKeys.none { n -> !fieldsMap.containsKey(n) })
+        return Util.renderTemplate("hive_${format}_table.template",
+                "tableName" to "${format}_$tableName",
+                "non_partition_fields" to nonPartitionFields.map{f->f.hiveSql()},
+                "partition_fields" to if(partitionFields.isEmpty()){null}else{partitionFields.map{f->f.simple().hivePartitionKeySql()}},
+                "cluster_keys" to if (clusterKeys.isEmpty()){null}else {clusterKeys},
+                "sort_keys" to if (sortKeys.isEmpty()){null}else{sortKeys},
+                "num_buckets" to numBuckets)
     }
 
     fun keyFields() = fields.take(keyLimit) as List<SimpleField>

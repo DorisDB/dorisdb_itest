@@ -319,6 +319,15 @@ object Util {
             it.close()
         }
     }
+    fun enclosedOutputStream(file: File, cb: (PrintStream) -> Unit) {
+        file.outputStream().let {
+            PrintStream(it)
+        }.let {
+            cb(it)
+            it.flush()
+            it.close()
+        }
+    }
 
     fun createFile(file: File, content: String) {
         Assert.assertTrue(!file.exists() || file.isFile)
@@ -598,7 +607,7 @@ object Util {
     fun renderTemplate(
             template: String,
             mainTemplateName: String,
-            parameters: Map<String, Any>): String {
+            parameters: Map<String, Any?>): String {
         val st = STGroupString(template).getInstanceOf(mainTemplateName)
         val requiredKeys = st.attributes.keys
         val actualKeys = parameters.keys
@@ -607,11 +616,11 @@ object Util {
             val missingKeys = requiredKeys.stream().map { k: String -> "'$k'" }.collect(Collectors.joining(", "))
             throw Exception("Missing keys: $missingKeys")
         }
-        parameters.forEach { (k: String, v: Any) -> st.add(k, v) }
+        parameters.forEach { (k: String, v: Any?) -> st.add(k, v) }
         return st.render()
     }
 
-    fun renderTemplate(templateName: String, vararg parameters: Pair<String, Any>): String {
+    fun renderTemplate(templateName: String, vararg parameters: Pair<String, Any?>): String {
         val template = String(this.javaClass.classLoader.getResourceAsStream(templateName).readAllBytes()!!, StandardCharsets.UTF_8)
         return renderTemplate(template, "main", parameters.toMap())
     }

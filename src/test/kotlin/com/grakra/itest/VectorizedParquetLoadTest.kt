@@ -255,14 +255,15 @@ class VectorizedParquetLoadTest : DorisDBRemoteITest() {
             SimpleField.fixedLength("col_bigint", FixedLengthType.TYPE_BIGINT),
             SimpleField.fixedLength("col_float", FixedLengthType.TYPE_FLOAT),
             SimpleField.fixedLength("col_double", FixedLengthType.TYPE_DOUBLE),
-            SimpleField.decimalv2("col_decimalv2", 27, 9)
+            SimpleField.decimalv2("col_decimal_p6s2", 6, 2),
+            SimpleField.decimalv2("col_decimal_p14s5", 14, 5),
+            SimpleField.decimalv2("col_decimal_p27s9", 27, 9)
     )
 
     val hiveTableName = "hive_table0"
     val hiveTable =  Table(hiveTableName, hiveFields, 0)
     val nullableHiveTable = Table("nullable_$hiveTableName", hiveFields.map{CompoundField.nullable(it, 50)}, 0)
 
-    @Test
     fun hiveSql(){
         val csvSql = hiveTable.hiveSql("csv", arrayOf(), arrayOf(), arrayOf(), 10)
         val orcSql = hiveTable.hiveSql("orc", arrayOf(), arrayOf(), arrayOf(), 10)
@@ -279,7 +280,6 @@ class VectorizedParquetLoadTest : DorisDBRemoteITest() {
         }
     }
 
-    @Test
     fun hiveClientTest(){
         val hiveClient = HiveClient("127.0.0.1:10000/default", "grakra", "")
         hiveClient.q {hive->

@@ -70,7 +70,7 @@ object OrcUtil {
                 is CharField -> RandUtil.generateRandomVarChar(RandUtil.lc() + RandUtil.uc() + RandUtil.digit(), 0, f.len)
                 is VarCharField -> RandUtil.generateRandomVarChar(RandUtil.lc() + RandUtil.uc() + RandUtil.digit(), 0, f.len)
                 is DecimalField -> RandUtil.generateRandomDecimal(f.precision, f.scale, 50)
-                is DecimalV2Field -> RandUtil.generateRandomDecimal(27, 9, 50)
+                is DecimalV2Field -> RandUtil.generateRandomDecimal(f.precision, f.scale, 50)
             }
             is CompoundField -> field2DefaultGenerator(f.fld)
         }
@@ -166,7 +166,7 @@ object OrcUtil {
 
                 TYPE_DATE ->
                     return {
-                        val date  = generator() as Date
+                        val date = generator() as Date
                         (cv as LongColumnVector).vector[idx()] = date.time / 86400000
                     }
                 TYPE_DATETIME ->
@@ -291,9 +291,13 @@ object OrcUtil {
                     val bytesVector = vector as BytesColumnVector
                     String(bytesVector.vector[i], bytesVector.start[i], bytesVector.length[i], Charsets.UTF_8)
                 }
-                TypeDescription.Category.BOOLEAN->{
+                TypeDescription.Category.BOOLEAN -> {
                     val longVector = vector as LongColumnVector
-                    if (longVector.vector[i]==1L){"TRUE"}else{"FALSE"}
+                    if (longVector.vector[i] == 1L) {
+                        "TRUE"
+                    } else {
+                        "FALSE"
+                    }
                 }
 
                 TypeDescription.Category.BYTE,
@@ -310,7 +314,7 @@ object OrcUtil {
                 }
                 TypeDescription.Category.DATE -> {
                     val dateVector = vector as LongColumnVector
-                    val date = Date(dateVector.vector[i]*86400000)
+                    val date = Date(dateVector.vector[i] * 86400000)
                     //date.time = dateVector.vector[i]
                     dateFmt.format(date)
                 }
@@ -326,6 +330,7 @@ object OrcUtil {
                 TypeDescription.Category.MAP -> TODO()
                 TypeDescription.Category.STRUCT -> TODO()
                 TypeDescription.Category.UNION -> TODO()
+                else -> TODO()
             }
         }
     }

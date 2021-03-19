@@ -222,6 +222,7 @@ object Util {
                 TypeDescription.Category.MAP -> TODO()
                 TypeDescription.Category.STRUCT -> TODO()
                 TypeDescription.Category.UNION -> TODO()
+                else->TODO()
             }
         }
     }

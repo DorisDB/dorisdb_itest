@@ -38,7 +38,7 @@ object OrcUtil {
                 is CharField -> TypeDescription.createChar().withMaxLength(f.len)
                 is VarCharField -> TypeDescription.createChar().withMaxLength(f.len)
                 is DecimalField -> TypeDescription.createDecimal().withScale(f.scale).withPrecision(f.precision)
-                is DecimalV2Field -> TypeDescription.createDecimal().withScale(9).withPrecision(27)
+                is DecimalV2Field -> TypeDescription.createDecimal().withScale(f.scale).withPrecision(f.precision)
             }
             is CompoundField -> field2OrcTypeDecription(f.fld)
         }
@@ -377,6 +377,43 @@ object OrcUtil {
 
     fun orcToCVS(orcPath: String, vararg fields: String) {
         orcToCVSOutputStream(orcPath, System.out, *fields)
+    }
+
+    fun orcToList(orcPath: String, vararg fields: String):List<List<String>> {
+        val conf = Configuration()
+        val dfsPath = org.apache.hadoop.fs.Path(orcPath)
+        val reader = OrcFile.createReader(dfsPath, OrcFile.ReaderOptions(conf))
+        //println(reader.schema)
+        val rowBatch = reader.schema.createRowBatch()
+        val allFields = reader.schema.fieldNames
+        val fieldFilter = if (fields.isEmpty()) {
+            allFields.filterNotNull().toSet()
+        } else {
+            fields.toSet()
+        }
+        val fieldIndices = (0 until allFields.size).filter { i -> fieldFilter.contains(allFields[i]) }
+        val columnFormatterGenerators = Array(reader.schema.fieldNames.size) {
+            { vector: ColumnVector, desc: TypeDescription -> nthItemOfColumnWithNullCheck(vector, desc) }
+        }
+        val columnFormatters = Array(reader.schema.fieldNames.size) {
+            { _: Int -> "" }
+        }
+        val rows = reader.rows()
+        val tuples = mutableListOf<List<String>>()
+        while (rows.nextBatch(rowBatch)) {
+            for (c: Int in fieldIndices) {
+                columnFormatters[c] = columnFormatterGenerators[c](rowBatch.cols[c], reader.schema.findSubtype(c + 1))
+            }
+            for (i: Int in 0 until rowBatch.size) {
+                val tuple = mutableListOf<String>()
+                for (c: Int in fieldIndices) {
+                    tuple.add(columnFormatters[fieldIndices[c]](i))
+                }
+                tuples.add(tuple)
+            }
+        }
+        rows.close()
+        return tuples
     }
 
     fun orcToCVSOutputStream(orcPath: String, csvOut: PrintStream, vararg fields: String) {

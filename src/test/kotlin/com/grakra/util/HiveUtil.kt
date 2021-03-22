@@ -19,7 +19,7 @@ object HiveUtil {
     class Sql(val pool: ConnectionPool<HiveConnection>) {
         fun q(sql: String) = qq(pool, sql)
         fun qv(sql: String) {
-            println("sql=${Util.squeezeWhiteSpaces(sql)}")
+            println("${Util.squeezeWhiteSpaces(sql)};")
             q(sql)!!.let { result ->
                 result!!.forEach { rows ->
                     rows.entries.joinToString { (k, v) -> "$k=$v" }.let { println(it) }
@@ -68,8 +68,9 @@ object HiveUtil {
 
     fun ee(pool: ConnectionPool<HiveConnection>, sql: String): Boolean? {
         val f = { stmt: Statement, sql: String ->
-            println("sql=\n$sql")
+            println("$sql;")
             stmt.execute(sql)
+            true
         }
         return xx(pool, sql, f)
     }

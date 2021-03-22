@@ -68,6 +68,7 @@ object MySQLUtil {
     }
 
     fun ee(pool: ConnectionPool<MySQLConnection>, sql: String): Boolean? {
+        println(sql)
         val f = { stmt: Statement, sql: String ->
             stmt.execute(sql)
         }
@@ -84,7 +85,7 @@ object MySQLUtil {
                 Result.b.wrap {
                     houseKeeper.async {
                         f(stmt, sql)
-                    }.get(10, TimeUnit.SECONDS)
+                    }.get(Long.MAX_VALUE, TimeUnit.SECONDS)
                 }.onErr {
                     it.printStackTrace()
                     Result.wrap { stmt.cancel() }

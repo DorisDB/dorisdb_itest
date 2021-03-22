@@ -1,0 +1,9 @@
+csv(list, sep) ::= <<
+<list:{v|<v>};separator=sep>
+>>
+
+main(tableName, columns, subQuery) ::= <<
+INSERT INTO <tableName>
+  (<csv(columns, ", ")>)
+  <subQuery>;
+>>

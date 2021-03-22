@@ -1,0 +1,14 @@
+csv(list, sep) ::= <<
+<list:{v|<v>};separator=sep>
+>>
+
+csv_of_csv(list,sep0,sep1) ::= <<
+<list:{v|(<csv(v, sep1)>)}; separator=sep0>
+>>
+
+main(tableName, columns, tuples) ::= <<
+INSERT INTO <tableName>
+  (<csv(columns, ", ")>)
+VALUES
+  <csv_of_csv(tuples, ",\n", ", ")>;
+>>

@@ -32,6 +32,7 @@ class VectorizedParquetLoadTest : DorisDBRemoteITest() {
     val tableNameNonVectorized = "parquet_test_table_non_vectorized"
     val tableNonVectorized = Table(tableNameNonVectorized, fields, 3)
 
+    @Test
     fun create_db_and_table() {
         create_db(db)
         create_table(db, tableVectorized)
@@ -90,7 +91,7 @@ class VectorizedParquetLoadTest : DorisDBRemoteITest() {
         println(loadSql)
     }
 
-    fun compare_nonvectorized_and_vectorized_load(vectorizedSql:String, nonVectorizedSql:String){
+    fun compare_nonvectorized_and_vectorized_load(vectorizedSql: String, nonVectorizedSql: String) {
         create_db(db)
         create_table(db, tableVectorized)
         create_table(db, tableNonVectorized)
@@ -103,13 +104,16 @@ class VectorizedParquetLoadTest : DorisDBRemoteITest() {
         Util.measureCost("non-vectorized") {
             broker_load(nonVectorizedSql)
         }
+        compare_each_column(db, tableNameVectorized, tableNameNonVectorized, fields.map { it.name })
         val fpVectorized = fingerprint_murmur_hash3_32(db, "select * from ${tableVectorized.tableName}")
         val fpNonVectorized = fingerprint_murmur_hash3_32(db, "select * from ${tableNonVectorized.tableName}")
         Assert.assertEquals(fpVectorized, fpNonVectorized)
     }
+
+
     @Test
-    fun test_broker_load_1_column_from_path(){
-        val vectorizedSql =  """
+    fun test_broker_load_1_column_from_path() {
+        val vectorizedSql = """
             USE parquet_db;
             LOAD LABEL parquet_db.load_${System.currentTimeMillis()} (
             DATA INFILE("hdfs://172.26.92.141:9002/rpf/parquet_files/1column_from_path/k1=*/*.parquet")
@@ -122,7 +126,7 @@ class VectorizedParquetLoadTest : DorisDBRemoteITest() {
             WITH BROKER hdfs ("username"="root", "password"="");
         """.trimIndent()
 
-        val nonVectorizedSql=  """
+        val nonVectorizedSql = """
             USE parquet_db;
             LOAD LABEL parquet_db.load_${System.currentTimeMillis()} (
             DATA INFILE("hdfs://172.26.92.141:9002/rpf/parquet_files/1column_from_path/k1=*/*.parquet")
@@ -138,8 +142,38 @@ class VectorizedParquetLoadTest : DorisDBRemoteITest() {
     }
 
     @Test
-    fun test_broker_load_2_column_from_path(){
-        val vectorizedSql =  """
+    fun test_broker_load_1_column_from_path_exclude_k13() {
+        val vectorizedSql = """
+            USE parquet_db;
+            LOAD LABEL parquet_db.load_${System.currentTimeMillis()} (
+            DATA INFILE("hdfs://172.26.92.141:9002/rpf/parquet_files/1column_from_path/k1=*/*.parquet")
+            INTO TABLE `parquet_test_table_vectorized`
+            FORMAT AS "parquet"
+            (k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12)
+            COLUMNS FROM PATH AS(k1)
+            SET (k1=concat(k1, "-01"))
+            )
+            WITH BROKER hdfs ("username"="root", "password"="");
+        """.trimIndent()
+
+        val nonVectorizedSql = """
+            USE parquet_db;
+            LOAD LABEL parquet_db.load_${System.currentTimeMillis()} (
+            DATA INFILE("hdfs://172.26.92.141:9002/rpf/parquet_files/1column_from_path/k1=*/*.parquet")
+            INTO TABLE `parquet_test_table_non_vectorized`
+            FORMAT AS "parquet"
+            (k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12)
+            COLUMNS FROM PATH AS (k1)
+            SET (k1=concat(k1, "-01"))
+            )
+            WITH BROKER hdfs ("username"="root", "password"="");
+        """.trimIndent()
+        compare_nonvectorized_and_vectorized_load(vectorizedSql, nonVectorizedSql)
+    }
+
+    @Test
+    fun test_broker_load_2_column_from_path() {
+        val vectorizedSql = """
             USE parquet_db;
             LOAD LABEL parquet_db.load_${System.currentTimeMillis()} (
             DATA INFILE("hdfs://172.26.92.141:9002/rpf/parquet_files/2column_from_path/k1=*/k6=*/*.parquet")
@@ -156,7 +190,7 @@ class VectorizedParquetLoadTest : DorisDBRemoteITest() {
             WITH BROKER hdfs ("username"="root", "password"="");
         """.trimIndent()
 
-        val nonVectorizedSql=  """
+        val nonVectorizedSql = """
             USE parquet_db;
             LOAD LABEL parquet_db.load_${System.currentTimeMillis()} (
             DATA INFILE("hdfs://172.26.92.141:9002/rpf/parquet_files/2column_from_path/k1=*/k6=*/*.parquet")
@@ -176,8 +210,46 @@ class VectorizedParquetLoadTest : DorisDBRemoteITest() {
     }
 
     @Test
-    fun test_broker_load_3_column_from_path(){
-        val vectorizedSql =  """
+    fun test_broker_load_2_column_from_path_exclude_k13() {
+        val vectorizedSql = """
+            USE parquet_db;
+            LOAD LABEL parquet_db.load_${System.currentTimeMillis()} (
+            DATA INFILE("hdfs://172.26.92.141:9002/rpf/parquet_files/2column_from_path/k1=*/k6=*/*.parquet")
+            INTO TABLE `parquet_test_table_vectorized`
+            FORMAT AS "parquet"
+            (k3, k4, k5, k7, k8, k9, k10, k11, k12)
+            COLUMNS FROM PATH AS (k1, k6)
+            SET (
+                k1=concat(k1, "-01"),
+                k6=k6+1,
+                k2=concat(k1, "-01 12:30:00")
+                )
+            )
+            WITH BROKER hdfs ("username"="root", "password"="");
+        """.trimIndent()
+
+        val nonVectorizedSql = """
+            USE parquet_db;
+            LOAD LABEL parquet_db.load_${System.currentTimeMillis()} (
+            DATA INFILE("hdfs://172.26.92.141:9002/rpf/parquet_files/2column_from_path/k1=*/k6=*/*.parquet")
+            INTO TABLE `parquet_test_table_non_vectorized`
+            FORMAT AS "parquet"
+            (k3, k4, k5, k7, k8, k9, k10, k11, k12)
+            COLUMNS FROM PATH AS (k1, k6)
+            SET (
+                k1=concat(k1, "-01"),
+                k6=k6+1,
+                k2=concat(k1, "-01 12:30:00")
+                )
+            )
+            WITH BROKER hdfs ("username"="root", "password"="");
+        """.trimIndent()
+        compare_nonvectorized_and_vectorized_load(vectorizedSql, nonVectorizedSql)
+    }
+
+    @Test
+    fun test_broker_load_3_column_from_path() {
+        val vectorizedSql = """
             USE parquet_db;
             LOAD LABEL parquet_db.load_${System.currentTimeMillis()} (
             DATA INFILE("hdfs://172.26.92.141:9002/rpf/parquet_files/3column_from_path/k1=*/k2=*/k3=*/*.parquet")
@@ -196,7 +268,7 @@ class VectorizedParquetLoadTest : DorisDBRemoteITest() {
             WITH BROKER hdfs ("username"="root", "password"="");
         """.trimIndent()
 
-        val nonVectorizedSql=  """
+        val nonVectorizedSql = """
             USE parquet_db;
             LOAD LABEL parquet_db.load_${System.currentTimeMillis()} (
             DATA INFILE("hdfs://172.26.92.141:9002/rpf/parquet_files/3column_from_path/k1=*/k2=*/k3=*/*.parquet")
@@ -218,8 +290,8 @@ class VectorizedParquetLoadTest : DorisDBRemoteITest() {
     }
 
     @Test
-    fun test_broker_load_has_empty_files(){
-        val vectorizedSql =  """
+    fun test_broker_load_has_empty_files() {
+        val vectorizedSql = """
             USE parquet_db;
             LOAD LABEL parquet_db.load_0_${System.currentTimeMillis()} (
             DATA INFILE("hdfs://172.26.92.141:9002/rpf/parquet_files/has_empty_files/*.parquet")
@@ -230,7 +302,7 @@ class VectorizedParquetLoadTest : DorisDBRemoteITest() {
             WITH BROKER hdfs ("username"="root", "password"="");
         """.trimIndent()
 
-        val nonVectorizedSql=  """
+        val nonVectorizedSql = """
             USE parquet_db;
             LOAD LABEL parquet_db.load_1_${System.currentTimeMillis()} (
             DATA INFILE("hdfs://172.26.92.141:9002/rpf/parquet_files/has_empty_files/*.parquet")
@@ -241,6 +313,114 @@ class VectorizedParquetLoadTest : DorisDBRemoteITest() {
             WITH BROKER hdfs ("username"="root", "password"="");
         """.trimIndent()
         compare_nonvectorized_and_vectorized_load(vectorizedSql, nonVectorizedSql)
+    }
+
+
+    val onlyDecimalV2Fields = listOf(
+            SimpleField.fixedLength("k1", FixedLengthType.TYPE_DATE),
+            SimpleField.decimalv2("k13", 27, 9)).map { CompoundField.nullable(it, 50) }
+    val onlyDecimalV2TableVectorized = Table("only_decimalv2_table_vectorized", onlyDecimalV2Fields,
+            1)
+    val onlyDecimalV2TableNonVectorized = Table("only_decimalv2_table_non_vectorized", onlyDecimalV2Fields,
+            1)
+
+    @Test
+    fun test_only_decimalv3() {
+        val vectorizedSql = """
+            USE parquet_db;
+            LOAD LABEL parquet_db.load_${System.currentTimeMillis()} (
+            DATA INFILE("hdfs://172.26.92.141:9002/rpf/parquet_files/data.parquet")
+            INTO TABLE `only_decimalv2_table_vectorized`
+            FORMAT AS "parquet"
+            (k1, k13)
+            )
+            WITH BROKER hdfs ("username"="root", "password"="")
+            PROPERTIES
+            (
+                "timeout" = "3600",
+                "max_filter_ratio" = "0.1"
+            );
+
+            ;
+        """.trimIndent()
+
+        val nonVectorizedSql = """
+            USE parquet_db;
+            LOAD LABEL parquet_db.load_${System.currentTimeMillis()} (
+            DATA INFILE("hdfs://172.26.92.141:9002/rpf/parquet_files/data.parquet")
+            INTO TABLE `only_decimalv2_table_non_vectorized`
+            FORMAT AS "parquet"
+            (k1, k13)
+            )
+            WITH BROKER hdfs ("username"="root", "password"="")
+            PROPERTIES
+            (
+                "timeout" = "3600",
+                "max_filter_ratio" = "0.1"
+            )
+            ;
+        """.trimIndent()
+        create_db(db)
+        create_table(db, onlyDecimalV2TableVectorized)
+        create_table(db, onlyDecimalV2TableNonVectorized)
+
+        admin_set_vectorized_load_enable(true)
+        Util.measureCost("vectorized") {
+            broker_load(vectorizedSql)
+        }
+        admin_set_vectorized_load_enable(false)
+        Util.measureCost("non-vectorized") {
+            broker_load(nonVectorizedSql)
+        }
+        compare_each_column(db, onlyDecimalV2TableVectorized.tableName, onlyDecimalV2TableNonVectorized.tableName, listOf("k1", "k13"))
+        val fpVectorized = fingerprint_murmur_hash3_32(db, "select * from ${onlyDecimalV2TableNonVectorized.tableName}")
+        val fpNonVectorized = fingerprint_murmur_hash3_32(db, "select * from ${onlyDecimalV2TableVectorized.tableName}")
+        Assert.assertEquals(fpVectorized, fpNonVectorized)
+
+    }
+
+    @Test
+    fun test_only_decimalv3_v2() {
+        val vectorizedSql = """
+            USE parquet_db;
+            LOAD LABEL parquet_db.load_${System.currentTimeMillis()} (
+            DATA INFILE("hdfs://172.26.92.141:9002/rpf/parquet_files/data.parquet")
+            INTO TABLE `only_decimalv2_table_vectorized`
+            FORMAT AS "parquet"
+            (k1, k13)
+            )
+            WITH BROKER hdfs ("username"="root", "password"="")
+            ;
+        """.trimIndent()
+
+        val nonVectorizedSql = """
+            USE parquet_db;
+            LOAD LABEL parquet_db.load_${System.currentTimeMillis()} (
+            DATA INFILE("hdfs://172.26.92.141:9002/rpf/parquet_files/data.parquet")
+            INTO TABLE `only_decimalv2_table_non_vectorized`
+            FORMAT AS "parquet"
+            (k1, k13)
+            )
+            WITH BROKER hdfs ("username"="root", "password"="")
+            ;
+        """.trimIndent()
+        create_db(db)
+        create_table(db, onlyDecimalV2TableVectorized)
+        create_table(db, onlyDecimalV2TableNonVectorized)
+
+        admin_set_vectorized_load_enable(true)
+        Util.measureCost("vectorized") {
+            broker_load(vectorizedSql)
+        }
+        admin_set_vectorized_load_enable(false)
+        Util.measureCost("non-vectorized") {
+            broker_load(nonVectorizedSql)
+        }
+        compare_each_column(db, onlyDecimalV2TableVectorized.tableName, onlyDecimalV2TableNonVectorized.tableName, listOf("k1", "k13"))
+        val fpVectorized = fingerprint_murmur_hash3_32(db, "select * from ${onlyDecimalV2TableNonVectorized.tableName}")
+        val fpNonVectorized = fingerprint_murmur_hash3_32(db, "select * from ${onlyDecimalV2TableVectorized.tableName}")
+        Assert.assertEquals(fpVectorized, fpNonVectorized)
+
     }
 
     val hiveFields = listOf(
@@ -261,10 +441,10 @@ class VectorizedParquetLoadTest : DorisDBRemoteITest() {
     )
 
     val hiveTableName = "hive_table0"
-    val hiveTable =  Table(hiveTableName, hiveFields, 0)
-    val nullableHiveTable = Table("nullable_$hiveTableName", hiveFields.map{CompoundField.nullable(it, 50)}, 0)
+    val hiveTable = Table(hiveTableName, hiveFields, 1)
+    val nullableHiveTable = Table("nullable_$hiveTableName", hiveFields.map { CompoundField.nullable(it, 50) }, 0)
 
-    fun hiveSql(){
+    fun hiveSql() {
         val csvSql = hiveTable.hiveSql("csv", arrayOf(), arrayOf(), arrayOf(), 10)
         val orcSql = hiveTable.hiveSql("orc", arrayOf(), arrayOf(), arrayOf(), 10)
         val parquetSql = hiveTable.hiveSql("parquet", arrayOf(), arrayOf(), arrayOf(), 10)
@@ -274,24 +454,24 @@ class VectorizedParquetLoadTest : DorisDBRemoteITest() {
         //OrcUtil.createOrcFile("$hiveTableName.orc", hiveTable.keyFields(), hiveTable.valueFields(emptySet()), 8193, 4096)
         //OrcUtil.orcToCVS("$hiveTableName.orc")
         //OrcUtil.orcToCVSFile("$hiveTableName.orc", "$hiveTableName.csv")
-        arrayOf(0, 1, 4095, 4096, 4097, 8191,8192,8193).forEach {num_rows->
+        arrayOf(0, 1, 4095, 4096, 4097, 8191, 8192, 8193).forEach { num_rows ->
             OrcUtil.createOrcFile("${hiveTable.tableName}_$num_rows.orc", hiveTable.keyFields(), hiveTable.valueFields(emptySet()), num_rows, 4096)
             OrcUtil.createOrcFile("${nullableHiveTable.tableName}_$num_rows.orc", nullableHiveTable.keyFields(), nullableHiveTable.valueFields(emptySet()), num_rows, 4096)
         }
     }
 
-    fun hiveClientTest(){
+    fun hiveClientTest() {
         val hiveClient = HiveClient("127.0.0.1:10000/default", "grakra", "")
-        hiveClient.q {hive->
+        hiveClient.q { hive ->
             hive.qv("show tables")
         }
 
-        val fileSizes=arrayOf(0, 1, 4095, 4096, 4097, 8191,8192,8193)
-        val orcFiles = fileSizes.map{"/hive_table0_orc_files/hive_table0_$it.orc"}
-        val nullableOrcFiles = fileSizes.map{"/nullable_hive_table0_orc_files/nullable_hive_table0_$it.orc"}
+        val fileSizes = arrayOf(0, 1, 4095, 4096, 4097, 8191, 8192, 8193)
+        val orcFiles = fileSizes.map { "/hive_table0_orc_files/hive_table0_$it.orc" }
+        val nullableOrcFiles = fileSizes.map { "/nullable_hive_table0_orc_files/nullable_hive_table0_$it.orc" }
         val parquetSql = hiveTable.hiveSql("parquet", arrayOf(), arrayOf(), arrayOf(), 10)
         val nullableParquetSql = nullableHiveTable.hiveSql("parquet", arrayOf(), arrayOf(), arrayOf(), 10)
-        hiveClient.q{hive->
+        hiveClient.q { hive ->
             hive.e("DROP TABLE IF EXISTS parquet_${hiveTable.tableName}")
             hive.e("DROP TABLE IF EXISTS parquet_${nullableHiveTable.tableName}")
             hive.e(parquetSql)
@@ -299,8 +479,8 @@ class VectorizedParquetLoadTest : DorisDBRemoteITest() {
         }
         val orcSql = hiveTable.hiveSql("orc", arrayOf(), arrayOf(), arrayOf(), 10)
         val nullableOrcSql = nullableHiveTable.hiveSql("orc", arrayOf(), arrayOf(), arrayOf(), 10)
-        hiveClient.q{hive->
-            orcFiles.forEach { orcFile->
+        hiveClient.q { hive ->
+            orcFiles.forEach { orcFile ->
                 val orcTable = "orc_${hiveTable.tableName}"
                 val parquetTable = "parquet_${hiveTable.tableName}"
                 val loadOrcSql = "LOAD DATA INPATH 'hdfs://$orcFile'  INTO TABLE $orcTable"
@@ -311,7 +491,7 @@ class VectorizedParquetLoadTest : DorisDBRemoteITest() {
                 hive.e(insertParquetSql)
             }
 
-            nullableOrcFiles.forEach { orcFile->
+            nullableOrcFiles.forEach { orcFile ->
                 val orcTable = "orc_${nullableHiveTable.tableName}"
                 val parquetTable = "parquet_${nullableHiveTable.tableName}"
                 val loadOrcSql = "LOAD DATA INPATH 'hdfs://$orcFile'  INTO TABLE $orcTable"
@@ -322,5 +502,43 @@ class VectorizedParquetLoadTest : DorisDBRemoteITest() {
                 hive.e(insertParquetSql)
             }
         }
+    }
+
+    val parquetHiveTableFields = listOf(
+            SimpleField.fixedLength("k1", FixedLengthType.TYPE_DATE),
+            SimpleField.fixedLength("k2", FixedLengthType.TYPE_DATETIME),
+            SimpleField.char("k3", 20),
+            SimpleField.varchar("k4", 20),
+            SimpleField.fixedLength("k5", FixedLengthType.TYPE_BOOLEAN),
+            SimpleField.fixedLength("k6", FixedLengthType.TYPE_TINYINT),
+            SimpleField.fixedLength("k7", FixedLengthType.TYPE_SMALLINT),
+            SimpleField.fixedLength("k8", FixedLengthType.TYPE_INT),
+            SimpleField.fixedLength("k9", FixedLengthType.TYPE_BIGINT),
+            //SimpleField.fixedLength("k10", FixedLengthType.TYPE_BIGINT),
+            SimpleField.fixedLength("k11", FixedLengthType.TYPE_FLOAT),
+            SimpleField.fixedLength("k12", FixedLengthType.TYPE_DOUBLE),
+            SimpleField.decimalv2("k13", 38, 9)
+    ).map { CompoundField.nullable(it, 50) }
+    val parquetHiveTable = Table("hive_table2", parquetHiveTableFields, 1)
+
+    @Test
+    fun load_parquet_into_hive() {
+        val hiveClient = HiveClient("127.0.0.1:10000/default", "grakra", "")
+        val parquetFile = "/parquet_files2/data0.parquet"
+        val dropHiveTableSql = "DROP TABLE IF EXISTS parquet_${parquetHiveTable.tableName}"
+        val createHiveTableSql = parquetHiveTable.hiveSql("parquet", arrayOf(), arrayOf(), arrayOf(), 1)
+        val loadParqeutSql = "LOAD DATA INPATH 'hdfs://$parquetFile'  INTO TABLE parquet_${parquetHiveTable.tableName}"
+        hiveClient.q { hive ->
+            hive.e(dropHiveTableSql)
+            hive.e(createHiveTableSql)
+            hive.e(loadParqeutSql)
+        }
+    }
+
+    @Test
+    fun create_hive_table() {
+        create_db(db)
+        create_table(db, hiveTable)
+        broker_load(db, hiveTable, "/rpf/parquet_files/test_data/parquet_data/data_*.parquet")
     }
 }

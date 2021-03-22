@@ -14,7 +14,7 @@ class OrcLoadingColumnFromPathTest : DorisDBRemoteITest() {
     val table = Table(tableName, listOf(
             SimpleField.fixedLength("col_int", FixedLengthType.TYPE_INT),
             SimpleField.varchar("col_varchar", 20),
-            SimpleField.fixedLength("col_date", FixedLengthType.TYPE_INT)),
+            SimpleField.fixedLength("col_date", FixedLengthType.TYPE_DATE)),
             1)
     val columnFromPath = "col_date"
 

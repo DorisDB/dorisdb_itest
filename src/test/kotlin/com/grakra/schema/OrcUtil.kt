@@ -41,6 +41,7 @@ object OrcUtil {
                 is DecimalV2Field -> TypeDescription.createDecimal().withScale(f.scale).withPrecision(f.precision)
             }
             is CompoundField -> field2OrcTypeDecription(f.fld)
+            is AggregateField -> field2OrcTypeDecription(f.fld)
         }
     }
 
@@ -73,6 +74,7 @@ object OrcUtil {
                 is DecimalV2Field -> RandUtil.generateRandomDecimal(f.precision, f.scale, 50)
             }
             is CompoundField -> field2DefaultGenerator(f.fld)
+            is AggregateField -> field2DefaultGenerator(f.fld)
         }
     }
 
@@ -216,6 +218,8 @@ object OrcUtil {
                 }
             }
             is DefaultValueField -> return generateSetOrcCell(cv, f.fld, generator, chunkMaxSize)
+            is TrivialCompoundField -> return generateSetOrcCell(cv, f.fld, generator, chunkMaxSize)
+            is AggregateField->return generateSetOrcCell(cv, f.fld, generator, chunkMaxSize)
         }
     }
 

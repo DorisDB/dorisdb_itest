@@ -1,0 +1,24 @@
+all_field_defs(fieldDefs) ::= <<
+<fieldDefs:{f|<f>};separator=",\n">
+>>
+
+all_keys(keys) ::= <<
+<keys:{k|`<k>`};separator=", ">
+>>
+
+main(tableName, keys, fieldDefs, replicaFactor) ::= <<
+DROP TABLE if exists <tableName>;
+
+CREATE TABLE if not exists <tableName>
+(
+<all_field_defs(fieldDefs)>
+) ENGINE=OLAP
+AGGREGATE KEY(<all_keys(keys)>)
+COMMENT "OLAP"
+DISTRIBUTED BY HASH(<all_keys(keys)>) BUCKETS 1
+PROPERTIES(
+"replication_num" = "<replicaFactor>",
+"in_memory" = "false",
+"storage_format" = "DEFAULT"
+);
+>>

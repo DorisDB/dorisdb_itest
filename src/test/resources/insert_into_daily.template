@@ -1,0 +1,17 @@
+csv(list) ::= <<
+<list:{v|"<v>"};separator=", ">
+>>
+
+main(test, name, fields, fingerprint) ::= <<
+    @attr("system")
+    def test_<test>(self):
+        table_name = "<name>"
+        table_name_ya = "<name>_ya"
+        fingerprint = "<fingerprint>"
+        fields=[<csv(fields)>]
+        subquery = "select %s from %s" % (",".join(fields), table_name)
+        self.ensure_database_exists(self.database_name)
+        self.test_insert_into_values_helper(table_name, fields, fingerprint)
+        self.test_insert_into_subquery_helper(table_name_ya, fields, subquery, fingerprint)
+
+>>

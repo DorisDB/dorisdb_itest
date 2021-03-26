@@ -22,10 +22,11 @@ class TestMisc {
         return Array(num) { arrayOf(lhsGen(), rhsGen()) }
     }
 
-    fun invalid_op(a: BigDecimal, b: BigDecimal):BigDecimal {
+    fun invalid_op(a: BigDecimal, b: BigDecimal): BigDecimal {
         Assert.fail("invalid_op")
         return BigDecimal.ZERO
     }
+
     fun add(a: BigDecimal, b: BigDecimal) = a.add(b)
     fun sub(a: BigDecimal, b: BigDecimal) = a.subtract(b)
     fun mul(a: BigDecimal, b: BigDecimal) = a.multiply(b)
@@ -251,13 +252,13 @@ class TestMisc {
                 rhsType.precision, rhsType.scale,
                 resultType.precision, resultType.scale)
 
-        val op = when(opName){
-            "AddOp"->::add
-            "SubOp"->::sub
-            "MulOp"->::mul
-            "DivOp"->make_div(resultType.bits)
-            "ModOp"->make_mod(resultType.bits)
-            else->::invalid_op
+        val op = when (opName) {
+            "AddOp" -> ::add
+            "SubOp" -> ::sub
+            "MulOp" -> ::mul
+            "DivOp" -> make_div(resultType.bits)
+            "ModOp" -> make_mod(resultType.bits)
+            else -> ::invalid_op
         }
 
         val testCases = decimal_triple2string(
@@ -272,58 +273,42 @@ class TestMisc {
 
     @Test
     fun testGenerateDecimalAdd_32_9_2() {
-        generateTestCases(
+        generateFullTestCase("AddOp",
                 DecimalType(32, 9, 2),
                 DecimalType(32, 9, 2),
-                DecimalType(32, 9, 2),
-                20,
-                50,
-                ::add,
-                OverflowPolicy.BINARY_BOUND_QUIET)
+                DecimalType(32, 9, 2))
     }
 
     @Test
     fun testGenerateDecimalAdd_64_17_9() {
-        generateTestCases(
+        generateFullTestCase("AddOp",
                 DecimalType(64, 17, 9),
                 DecimalType(64, 17, 9),
-                DecimalType(64, 17, 9),
-                20,
-                50,
-                ::add,
-                OverflowPolicy.BINARY_BOUND_QUIET)
+                DecimalType(64, 17, 9))
     }
 
     @Test
     fun testGenerateDecimalAdd_128_17_9() {
-        generateTestCases(
+        generateFullTestCase("AddOp",
                 DecimalType(128, 38, 38),
                 DecimalType(128, 38, 38),
-                DecimalType(128, 38, 38),
-                20,
-                50,
-                ::add,
-                OverflowPolicy.BINARY_BOUND_QUIET)
+                DecimalType(128, 38, 38))
     }
 
     @Test
     fun testGenerateDecimalAddAdjustLeft_32_9_2() {
-        generateTestCases(
+        generateFullTestCase("AddOp",
                 DecimalType(32, 6, 2),
                 DecimalType(32, 4, 3),
-                DecimalType(32, 9, 3),
-                20,
-                50,
-                ::add,
-                OverflowPolicy.BINARY_BOUND_QUIET)
+                DecimalType(32, 9, 3))
     }
 
     @Test
     fun testGenerateDecimalAddAdjustLeft_64() {
         generateFullTestCase("AddOp",
-                DecimalType(64,9,2),
+                DecimalType(64, 9, 2),
                 DecimalType(64, 18, 9),
-                DecimalType(64,18,9)
+                DecimalType(64, 18, 9)
         )
     }
 
@@ -338,18 +323,14 @@ class TestMisc {
 
     @Test
     fun testGenerateDecimalAddAdjustRight_32_9_2() {
-        generateTestCases(
+        generateFullTestCase("AddOp",
                 DecimalType(32, 5, 5),
                 DecimalType(32, 6, 2),
-                DecimalType(32, 9, 5),
-                20,
-                50,
-                ::add,
-                OverflowPolicy.BINARY_BOUND_QUIET)
+                DecimalType(32, 9, 5))
     }
 
     @Test
-    fun testGenerateDecimalAddAdjustRight_64(){
+    fun testGenerateDecimalAddAdjustRight_64() {
         generateFullTestCase(
                 "AddOp",
                 DecimalType(64, 18, 11),
@@ -368,15 +349,12 @@ class TestMisc {
 
     @Test
     fun testGenerateDecimalSubAdjustLeft_32() {
-        generateTestCases(
+        generateFullTestCase("SubOp",
                 DecimalType(32, 4, 2),
                 DecimalType(32, 6, 4),
-                DecimalType(32, 9, 4),
-                20,
-                50,
-                ::sub,
-                OverflowPolicy.BINARY_BOUND_QUIET)
+                DecimalType(32, 9, 4))
     }
+
     @Test
     fun testGenerateDecimalSubAdjustLeft_64() {
         generateFullTestCase(
@@ -385,6 +363,7 @@ class TestMisc {
                 DecimalType(64, 18, 12),
                 DecimalType(64, 18, 12))
     }
+
     @Test
     fun testGenerateDecimalSubAdjustLeft_128() {
         generateFullTestCase(
@@ -396,15 +375,12 @@ class TestMisc {
 
     @Test
     fun testGenerateDecimalSubAdjustRight_32_9_2() {
-        generateTestCases(
+        generateFullTestCase("SubOp",
                 DecimalType(32, 6, 5),
                 DecimalType(32, 4, 2),
-                DecimalType(32, 9, 5),
-                20,
-                50,
-                ::sub,
-                OverflowPolicy.BINARY_BOUND_QUIET)
+                DecimalType(32, 9, 5))
     }
+
     @Test
     fun testGenerateDecimalSubAdjustRight_64() {
         generateFullTestCase(
@@ -413,6 +389,7 @@ class TestMisc {
                 DecimalType(64, 11, 6),
                 DecimalType(64, 18, 13))
     }
+
     @Test
     fun testGenerateDecimalSubAdjustRight_128() {
         generateFullTestCase(
@@ -424,14 +401,11 @@ class TestMisc {
 
     @Test
     fun testGenerateDecimalSub_32_9_2() {
-        generateTestCases(
+        generateFullTestCase(
+                "SubOp",
                 DecimalType(32, 9, 2),
                 DecimalType(32, 9, 2),
-                DecimalType(32, 9, 2),
-                20,
-                50,
-                ::sub,
-                OverflowPolicy.BINARY_BOUND_QUIET)
+                DecimalType(32, 9, 2))
     }
 
     @Test
@@ -442,6 +416,7 @@ class TestMisc {
                 DecimalType(64, 18, 15),
                 DecimalType(64, 18, 15))
     }
+
     @Test
     fun testGenerateDecimalSub_128() {
         generateFullTestCase(
@@ -453,14 +428,10 @@ class TestMisc {
 
     @Test
     fun testGenerateDecimalMul_32_9_2() {
-        generateTestCases(
+        generateFullTestCase("MulOp",
                 DecimalType(32, 5, 2),
                 DecimalType(32, 5, 1),
-                DecimalType(32, 9, 3),
-                20,
-                50,
-                ::mul,
-                OverflowPolicy.BINARY_BOUND_QUIET)
+                DecimalType(32, 9, 3))
     }
 
     @Test
@@ -471,6 +442,7 @@ class TestMisc {
                 DecimalType(64, 4, 3),
                 DecimalType(64, 18, 7))
     }
+
     @Test
     fun testGenerateDecimalMul_128() {
         generateFullTestCase(
@@ -482,14 +454,10 @@ class TestMisc {
 
     @Test
     fun testGenerateDecimalDiv_9_2() {
-        generateTestCases(
+        generateFullTestCase("DivOp",
                 DecimalType(32, 7, 2),
                 DecimalType(32, 3, 2),
-                DecimalType(32, 9, 2),
-                20,
-                50,
-                make_div(32),
-                OverflowPolicy.BINARY_BOUND_QUIET)
+                DecimalType(32, 9, 2))
     }
 
     @Test
@@ -500,6 +468,7 @@ class TestMisc {
                 DecimalType(64, 9, 6),
                 DecimalType(64, 18, 8))
     }
+
     @Test
     fun testGenerateDecimalDiv_128() {
         generateFullTestCase(
@@ -511,14 +480,11 @@ class TestMisc {
 
     @Test
     fun testGenerateDecimalMod_32() {
-        generateTestCases(
+        generateFullTestCase(
+                "ModOp",
                 DecimalType(32, 7, 2),
                 DecimalType(32, 3, 2),
-                DecimalType(32, 9, 2),
-                20,
-                50,
-                make_mod(32),
-                OverflowPolicy.BINARY_BOUND_QUIET)
+                DecimalType(32, 9, 2))
     }
 
     @Test
@@ -529,6 +495,7 @@ class TestMisc {
                 DecimalType(64, 9, 7),
                 DecimalType(64, 18, 7))
     }
+
     @Test
     fun testGenerateDecimalMod_128() {
         generateFullTestCase(
@@ -540,14 +507,11 @@ class TestMisc {
 
     @Test
     fun testGenerateIntDivDecimal_32() {
-        generateTestCases(
+        generateFullTestCase(
+                "DivOp",
                 DecimalType(32, 7, 0),
                 DecimalType(32, 3, 1),
-                DecimalType(32, 9, 1),
-                20,
-                50,
-                make_div(32),
-                OverflowPolicy.BINARY_BOUND_QUIET)
+                DecimalType(32, 9, 1))
     }
 
     @Test
@@ -558,6 +522,7 @@ class TestMisc {
                 DecimalType(64, 9, 3),
                 DecimalType(64, 18, 3))
     }
+
     @Test
     fun testGenerateDecimalIntegerDivDecimal_128() {
         generateFullTestCase(
@@ -569,14 +534,11 @@ class TestMisc {
 
     @Test
     fun testGenerateIntModDecimal_32() {
-        generateTestCases(
+        generateFullTestCase(
+                "ModOp",
                 DecimalType(32, 7, 0),
                 DecimalType(32, 3, 1),
-                DecimalType(32, 9, 1),
-                20,
-                50,
-                make_mod(32),
-                OverflowPolicy.BINARY_BOUND_QUIET)
+                DecimalType(32, 9, 1))
     }
 
     @Test
@@ -587,6 +549,7 @@ class TestMisc {
                 DecimalType(64, 9, 5),
                 DecimalType(64, 18, 5))
     }
+
     @Test
     fun testGenerateDecimalIntModDecimal_128() {
         generateFullTestCase(
@@ -598,15 +561,12 @@ class TestMisc {
 
     @Test
     fun testGenerateDecimalDivInteger_32() {
-        generateTestCases(
+        generateFullTestCase("DivOp",
                 DecimalType(32, 9, 3),
                 DecimalType(32, 3, 0),
-                DecimalType(32, 9, 3),
-                20,
-                50,
-                make_div(32),
-                OverflowPolicy.BINARY_BOUND_QUIET)
+                DecimalType(32, 9, 3))
     }
+
     @Test
     fun testGenerateDecimalDivInteger_64() {
         generateFullTestCase(
@@ -615,6 +575,7 @@ class TestMisc {
                 DecimalType(64, 15, 0),
                 DecimalType(64, 18, 2))
     }
+
     @Test
     fun testGenerateDecimalDivInteger_128() {
         generateFullTestCase(
@@ -626,15 +587,13 @@ class TestMisc {
 
     @Test
     fun testGenerateDecimalModInteger_32() {
-        generateTestCases(
+        generateFullTestCase(
+                "ModOp",
                 DecimalType(32, 9, 3),
                 DecimalType(32, 3, 0),
-                DecimalType(32, 9, 0),
-                20,
-                50,
-                make_mod(32),
-                OverflowPolicy.BINARY_BOUND_QUIET)
+                DecimalType(32, 9, 0))
     }
+
     @Test
     fun testGenerateDecimalModInteger_64() {
         generateFullTestCase(
@@ -643,6 +602,7 @@ class TestMisc {
                 DecimalType(64, 11, 0),
                 DecimalType(64, 18, 0))
     }
+
     @Test
     fun testGenerateDecimalModInteger_128() {
         generateFullTestCase(

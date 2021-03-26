@@ -27,7 +27,14 @@ object HiveUtil {
             }
         }
 
-        fun e(sql: String) = ee(pool, sql)
+        fun e(sql: String) = e(sql, false)
+        fun e(sql: String, dryRun:Boolean) :Boolean? {
+            println("$sql;")
+            if (dryRun){
+                return true;
+            }
+            return ee(pool, sql)
+        }
         fun close() = pool.queue.forEach { cxn -> cxn.close() }
     }
 
@@ -68,7 +75,6 @@ object HiveUtil {
 
     fun ee(pool: ConnectionPool<HiveConnection>, sql: String): Boolean? {
         val f = { stmt: Statement, sql: String ->
-            println("$sql;")
             stmt.execute(sql)
             true
         }

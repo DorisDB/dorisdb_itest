@@ -52,12 +52,10 @@ open class DorisDBRemoteITest : KotlinITest() {
     fun create_table(db: String, table: Table) {
         run_mysql { c ->
             val tableSql = table.sql()
-            println("tableSql=$tableSql")
             c.q(db) { sql ->
                 sql.e("set enable_decimal_v3 = true")
                 sql.e(tableSql)
-                val result = sql.q("desc ${table.tableName}")
-                println(result)
+                sql.q("desc ${table.tableName}")
             }
         }
     }
@@ -156,10 +154,18 @@ open class DorisDBRemoteITest : KotlinITest() {
         broker_load(loadSql)
     }
 
+    fun broker_load_and_compute_fingerprint(db:String, table:Table, format:String, hdfsPath:String){
+        val loadSql = table.brokerLoadSql(db, format, hdfsPath)
+        create_table(db, table)
+        broker_load(loadSql)
+        println(fingerprint_murmur_hash3_32(db, "select * from ${table.tableName}"))
+    }
+
     fun broker_load(loadSql: String) {
         val checkLoadStateSql = "show load order by createtime desc limit 1"
         run_mysql { c ->
             c.q { sql ->
+                sql.e("set enable_decimal_v3 = true")
                 sql.e(loadSql)
                 loop@ while (true) {
                     val rs = sql.q(checkLoadStateSql)!!

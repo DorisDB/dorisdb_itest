@@ -2,6 +2,11 @@ package com.grakra.itest
 
 import com.grakra.TestMethodCapture
 import com.grakra.dorisdb.HiveClient
+import com.grakra.schema.CompoundField
+import com.grakra.schema.FixedLengthType
+import com.grakra.schema.SimpleField
+import com.grakra.schema.Table
+import com.grakra.util.Util
 import org.testng.Assert
 import org.testng.annotations.Listeners
 import org.testng.annotations.Test
@@ -206,26 +211,27 @@ class VectorizedPerformanceTest : DorisDBRemoteITest() {
                 "/rpf/web_scales/web_sales_99_1000.dat",
                 "/rpf/web_scales/web_sales_9_1000.dat"
         )
+        val dryRun = true;
         val hiveClient = HiveClient("127.0.0.1:10000/default", "grakra", "")
         hiveClient.q { hive ->
-            hive.e(drop_hive_csv_table)
-            hive.e(drop_hive_parquet_table)
-            hive.e(create_hive_csv_table)
-            hive.e(create_hive_parquet_table)
+            hive.e(drop_hive_csv_table, dryRun)
+            hive.e(drop_hive_parquet_table, dryRun)
+            hive.e(create_hive_csv_table, dryRun)
+            hive.e(create_hive_parquet_table, dryRun)
         }
         hiveClient.q { hive ->
             csvFiles.forEach { csvFile ->
                 val loadCSVSql = "LOAD DATA INPATH 'hdfs://$csvFile'  INTO TABLE $csv_table"
                 val insertParquetSql = "INSERT INTO $parquet_table select * from $csv_table"
-                hive.e(drop_hive_csv_table)
-                hive.e(create_hive_csv_table)
-                hive.e(loadCSVSql)
-                hive.e(insertParquetSql)
+                hive.e(drop_hive_csv_table, dryRun)
+                hive.e(create_hive_csv_table, dryRun)
+                hive.e(loadCSVSql, dryRun)
+                hive.e(insertParquetSql, dryRun)
             }
         }
     }
 
-    val non_vectorized_load="""
+    val non_vectorized_load = """
         USE $db;
         LOAD LABEL $db.non_vectorized_${System.currentTimeMillis()} (
         DATA INFILE("hdfs://172.26.92.141:9002/user/hive/warehouse/parquet_web_sales/*")
@@ -236,7 +242,7 @@ class VectorizedPerformanceTest : DorisDBRemoteITest() {
         WITH BROKER hdfs ("username"="root", "password"="");
     """.trimIndent()
 
-    val vectorized_load="""
+    val vectorized_load = """
         USE $db;
         LOAD LABEL $db.vectorized_${System.currentTimeMillis()} (
         DATA INFILE("hdfs://172.26.92.141:9002/user/hive/warehouse/parquet_web_sales/*")
@@ -246,23 +252,101 @@ class VectorizedPerformanceTest : DorisDBRemoteITest() {
         )
         WITH BROKER hdfs ("username"="root", "password"="");
     """.trimIndent()
+
     @Test
-    fun non_vectorized_load(){
+    fun non_vectorized_load() {
         admin_set_vectorized_load_enable(false)
         broker_load(non_vectorized_load)
     }
 
     @Test
-    fun vectorized_load(){
+    fun vectorized_load() {
         admin_set_vectorized_load_enable(true)
         broker_load(vectorized_load)
     }
+
     @Test
-    fun compare_fingerprint(){
-        val fpNonVectorized= fingerprint_murmur_hash3_32(db, "select * from $non_vectorized_table_name")
-        val fpVectorized= fingerprint_murmur_hash3_32(db, "select * from $vectorized_table_name")
+    fun compare_fingerprint() {
+        val fpNonVectorized = fingerprint_murmur_hash3_32(db, "select * from $non_vectorized_table_name")
+        val fpVectorized = fingerprint_murmur_hash3_32(db, "select * from $vectorized_table_name")
         println("fpNonVectorized=${fpNonVectorized}")
         println("fpVectorized=${fpVectorized}")
         Assert.assertEquals(fpNonVectorized, fpVectorized)
+    }
+
+    val store_sales_fields0 = listOf(
+            SimpleField.fixedLength("ss_item_sk", FixedLengthType.TYPE_INT),
+            SimpleField.fixedLength("ss_ticket_number", FixedLengthType.TYPE_INT),
+            SimpleField.fixedLength("ss_sold_date_sk", FixedLengthType.TYPE_INT),
+            SimpleField.fixedLength("ss_sold_time_sk", FixedLengthType.TYPE_INT),
+            SimpleField.fixedLength("ss_customer_sk", FixedLengthType.TYPE_INT),
+            SimpleField.fixedLength("ss_cdemo_sk", FixedLengthType.TYPE_INT),
+            SimpleField.fixedLength("ss_hdemo_sk", FixedLengthType.TYPE_INT),
+            SimpleField.fixedLength("ss_addr_sk", FixedLengthType.TYPE_INT),
+            SimpleField.fixedLength("ss_store_sk", FixedLengthType.TYPE_INT),
+            SimpleField.fixedLength("ss_promo_sk", FixedLengthType.TYPE_INT),
+            SimpleField.fixedLength("ss_quantity", FixedLengthType.TYPE_INT),
+            SimpleField.decimalv2("ss_wholesale_cost", 7, 2),
+            SimpleField.decimalv2("ss_list_price", 7, 2),
+            SimpleField.decimalv2("ss_sales_price", 7, 2),
+            SimpleField.decimalv2("ss_ext_discount_amt", 7, 2),
+            SimpleField.decimalv2("ss_ext_sales_price", 7, 2),
+            SimpleField.decimalv2("ss_ext_wholesale_cost", 7, 2),
+            SimpleField.decimalv2("ss_ext_list_price", 7, 2),
+            SimpleField.decimalv2("ss_ext_tax", 7, 2),
+            SimpleField.decimalv2("ss_coupon_amt", 7, 2),
+            SimpleField.decimalv2("ss_net_paid", 7, 2),
+            SimpleField.decimalv2("ss_net_paid_inc_tax", 7, 2),
+            SimpleField.decimalv2("ss_net_profit", 7, 2)
+    )
+    //val store_sales_fields = store_sales_fields0.take(2) + store_sales_fields0.drop(2).map { CompoundField.nullable(it, 50) }
+    val store_sales_fields =  store_sales_fields0.map { CompoundField.nullable(it, 50) }
+    val store_sales_table = Table("store_sales", store_sales_fields, 2)
+    val store_sales_table_vectorized = store_sales_table.renameTable("store_sales_vectorized")
+    @Test
+    fun prepare_store_sales_data() {
+        val csvFiles = arrayOf(
+                "/rpf/web_sales/store_sales.dat"
+        )
+        val dryRun = true
+        val hiveClient = HiveClient("127.0.0.1:10000/default", "grakra", "")
+        hiveClient.q { hive ->
+            hive.e(store_sales_table.dropHiveTableSql("parquet"), dryRun)
+            hive.e(store_sales_table.dropHiveTableSql("csv"), dryRun)
+            hive.e(store_sales_table.createHiveTableSql("parquet"), dryRun)
+            hive.e(store_sales_table.createHiveTableSql("csv"), dryRun)
+        }
+        hiveClient.q { hive ->
+            csvFiles.forEach { csvFile ->
+                val csvTableName = store_sales_table.hiveTableName("csv")
+                val parquetTableName = store_sales_table.hiveTableName("parquet")
+                val loadCSVSql = "LOAD DATA INPATH 'hdfs://$csvFile'  INTO TABLE $csvTableName"
+                val insertParquetSql = "INSERT INTO $parquetTableName select * from $csvTableName"
+                hive.e(store_sales_table.dropHiveTableSql("csv"), dryRun)
+                hive.e(store_sales_table.createHiveTableSql("csv"), dryRun)
+                hive.e(loadCSVSql, dryRun)
+                hive.e(insertParquetSql, dryRun)
+            }
+        }
+    }
+
+    @Test
+    fun vectorized_load_store_sales_table() {
+        val hdfsPath = "/rpf/parquet_store_sales/*"
+        create_db(db)
+        create_table(db, store_sales_table_vectorized)
+        create_table(db, store_sales_table)
+        admin_set_vectorized_load_enable(true)
+        Util.measureCost("VECTORIZED") {
+            broker_load(store_sales_table_vectorized.brokerLoadSql(db, "parquet", hdfsPath))
+        }
+        admin_set_vectorized_load_enable(false)
+        Util.measureCost("NON-VECTORIZED") {
+            broker_load(store_sales_table.brokerLoadSql(db, "parquet", hdfsPath))
+        }
+        val fpVectorized = fingerprint_murmur_hash3_32(db, "select * from ${store_sales_table_vectorized.tableName}")
+        val fpNonVectorized = fingerprint_murmur_hash3_32(db, "select * from ${store_sales_table.tableName}")
+        println("fpVectorized=$fpNonVectorized, fpNonVectorized=$fpNonVectorized")
+        Assert.assertEquals(fpVectorized, fpNonVectorized)
     }
 }

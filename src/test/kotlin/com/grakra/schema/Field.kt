@@ -27,6 +27,16 @@ abstract sealed class SimpleField(override val name: String) : Field(name) {
         fun decimalv2(name: String, precision: Int, scale: Int) = DecimalV2Field(name, precision, scale)
     }
 
+    fun rename(newName: String): SimpleField {
+        return when (this) {
+            is FixedLengthField -> SimpleField.fixedLength(newName, this.type)
+            is CharField -> SimpleField.char(newName, this.len)
+            is VarCharField -> SimpleField.varchar(newName, this.len)
+            is DecimalField -> SimpleField.decimal(newName, this.bits, this.precision, this.scale)
+            is DecimalV2Field -> SimpleField.decimalv2(newName, this.precision, this.scale)
+        }
+    }
+
     fun precisionAndScale(): Pair<Int, Int> {
         return when (this) {
             is DecimalField -> this.precision to this.scale
@@ -91,7 +101,7 @@ abstract sealed class SimpleField(override val name: String) : Field(name) {
 
 abstract sealed class CompoundField(open val fld: SimpleField) : Field(fld.name) {
     companion object {
-        fun trivial(fld:SimpleField):CompoundField = TrivialCompoundField(fld)
+        fun trivial(fld: SimpleField): CompoundField = TrivialCompoundField(fld)
         fun nullable(fld: SimpleField, nullRatio: Int): CompoundField = NullableField(fld, nullRatio)
         fun default_value(fld: SimpleField, value: String): CompoundField = DefaultValueField(fld, value)
         fun nullable_default_value(fld: SimpleField, nullRatio: Int, value: String): CompoundField = NullableDefaultValueField(fld, nullRatio, value)
@@ -159,15 +169,17 @@ data class NullableDefaultValueField(override val fld: SimpleField, val nullRati
 
 data class AggregateField(val fld: CompoundField, val aggType: AggregateType) : Field(fld.name) {
     companion object {
-        fun aggregate(fld: CompoundField,aggType: AggregateType) = AggregateField(fld, aggType)
+        fun aggregate(fld: CompoundField, aggType: AggregateType) = AggregateField(fld, aggType)
     }
+
     override fun sqlType(): kotlin.String {
         return when (aggType) {
             AggregateType.NONE -> fld.sqlType()
             else -> fld.sqlType() + " " + aggType.name
         }
     }
-    override fun sql(): String  {
+
+    override fun sql(): String {
         if (aggType == AggregateType.NONE) {
             return this.fld.sql()
         }

@@ -92,6 +92,7 @@ open class DorisDBRemoteITest : KotlinITest() {
         var rs: List<Map<String, Any>>? = null
         run_mysql { c ->
             c.q(db) { sql ->
+                sql.e("set enable_decimal_v3 = true")
                 rs = sql.q(stmt)
             }
         }
@@ -131,7 +132,16 @@ open class DorisDBRemoteITest : KotlinITest() {
         return fpRs.first().getValue("fingerprint") as Long
     }
 
+    fun fingerprint_sql(db: String, hashFunc: String, sql: String): String {
+        val rs = query(db, SqlUtil.limit1(sql))
+        Assert.assertTrue(rs.isNotEmpty())
+        val colNames = rs.first().keys.toList()
+        return SqlUtil.fingerprint(hashFunc, colNames, sql)
+    }
+
+
     fun fingerprint_murmur_hash3_32(db: String, sql: String) = fingerprint(db, "murmur_hash3_32", sql)
+    fun fingerprint_murmur_hash3_32_sql(db: String, sql: String) = fingerprint_sql(db, "murmur_hash3_32", sql)
 
     fun compare_columns(db: String, table0: String, table1: String, vararg columnGroups: List<String>) {
         columnGroups.forEach { colGroup ->

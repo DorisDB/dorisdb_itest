@@ -1,4 +1,8 @@
 csv(list, sep) ::= <<
+<list:{v|"<v>"};separator=sep>
+>>
+
+csv_unquoted(list, sep) ::= <<
 <list:{v|<v>};separator=sep>
 >>
 
@@ -8,7 +12,7 @@ csv_of_csv(list,sep0,sep1) ::= <<
 
 main(tableName, columns, tuples) ::= <<
 INSERT INTO <tableName>
-  (<csv(columns, ", ")>)
+  (<csv_unquoted(columns, ", ")>)
 VALUES
   <csv_of_csv(tuples, ",\n", ", ")>;
 >>

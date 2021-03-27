@@ -89,7 +89,7 @@ object FunctionTestTable {
                 "db" to db,
                 "table" to table,
                 "labelId" to System.currentTimeMillis().toString(),
-                "hdfsPath" to "/rpf/orc_files/decimal_all_types.orc",
+                "hdfsPath" to "/user/decimal_v3_function_test/decimal_all_types.orc",
                 "format" to "orc",
                 "columnList" to (keyFields + valueFields).map { it.name })
 

@@ -1,13 +1,20 @@
-package com.grakra
+package com.grakra.itest
 
 import com.google.common.base.Strings
+import com.grakra.DecimalType
+import com.grakra.TestMethodCapture
+import com.grakra.schema.*
 import com.grakra.util.Util
 import org.junit.Assert
-import org.testng.annotations.Test
+import org.testng.annotations.*
+import java.io.File
+import java.io.InputStream
+import java.io.PrintStream
 import java.math.BigDecimal
 import java.math.BigInteger
 
-class TestMisc {
+@Listeners(TestMethodCapture::class)
+class DecimalArithmeticTest : DorisDBRemoteITest() {
     @Test
     fun testWriteOrcFile() {
         Util.createOrcFile("foobar.orc")
@@ -271,6 +278,24 @@ class TestMisc {
         println(content)
     }
 
+    val createSqlPrefix = "arithmetic_operations/sql"
+    val dataCsvPrefix = "arithmetic_operations/csv"
+    val db = "arithmetic_operations"
+    val genCodeFile = "arithmetic_operations.py"
+    var genCode: PrintStream? = null
+
+    @BeforeClass
+    fun setUp() {
+        genCode = PrintStream(File(genCodeFile).outputStream())
+        create_db(db)
+    }
+
+    @AfterClass
+    fun tearDown() {
+        genCode!!.flush()
+        genCode!!.close()
+    }
+
     fun generateFullTestCase(opName: String, lhsType: DecimalType, rhsType: DecimalType, resultType: DecimalType) {
         val randInputs = gen_decimal_pair(
                 20,
@@ -302,15 +327,64 @@ class TestMisc {
             "ModOp" -> make_mod(resultType.bits)
             else -> ::invalid_op
         }
+        val operator = when (opName) {
+            "AddOp" -> "+"
+            "SubOp" -> "-"
+            "MulOp" -> "*"
+            "DivOp" -> "/"
+            "ModOp" -> "%"
+            else -> "+"
+        }
 
         val testCases = decimal_triple2string(
                 decimal_pair2triple(specialInputs.plus(randInputs), op, overflow_policy(resultType.bits, resultType.precision, OverflowPolicy.BINARY_BOUND_QUIET)))
-        val content = Util.renderTemplate("decimal_testcase_full.template",
-                "test_cases" to testCases,
-                "primitive_type" to primitiveType,
-                "binary_op" to opName,
-                "precisions_and_scales" to precisionsAndScales)
-        println(content)
+
+        val table = create_table_from_decimal_triple(opName, lhsType, rhsType, resultType)
+        val createSqlPath = "$createSqlPrefix/${table.tableName}.sql"
+        val dataCsvPath = "$dataCsvPrefix/${table.tableName}.csv"
+
+        Util.createFile(File(createSqlPath), table.sql())
+        val counter = Util.generateCounter()
+        val tuples = testCases.map { tc -> listOf(counter(), *tc).map { e -> "$e" } }
+        val csvTuples = tuples.joinToString("\n") { it.joinToString(",") }
+
+        Util.createFile(File(dataCsvPath), csvTuples)
+        //create_table(db, table)
+        //val insertSql = table.insertIntoValuesSql(tuples)
+        //execute(db, insertSql)
+        //val fp = fingerprint_murmur_hash3_32(db, table.selectAll())
+        val fp = 0
+        val checkSql = """
+        select count(*) as count 
+        from (select (lhs + rhs) as expect, result from ${table.tableName}) as t
+        where  t.expect = t.result    
+        """.trimIndent()
+        //val rs = query(db, checkSql)
+        //println(rs)
+        //println(testCases.size)
+        //Assert.assertTrue(rs.size == 1)
+        //Assert.assertTrue(rs.first().getValue("count") == testCases.size)
+
+        val content = Util.renderTemplate("arithmetic_operation.template",
+                "name" to table.tableName,
+                "fp" to fp,
+                "operator" to operator,
+                "numRows" to testCases.size)
+        genCode!!.println(content)
+    }
+
+    fun decimal_type_to_decimal_field(name: String, dt: DecimalType): DecimalField {
+        Assert.assertTrue(dt.bits in setOf(32, 64, 128))
+        return SimpleField.decimal(name, dt.bits, dt.precision, dt.scale)
+    }
+
+    fun create_table_from_decimal_triple(op: String, lhs: DecimalType, rhs: DecimalType, result: DecimalType): Table {
+        val seq = SimpleField.fixedLength("seq", FixedLengthType.TYPE_INT)
+        val lhsField = decimal_type_to_decimal_field("lhs", lhs)
+        val rhsField = decimal_type_to_decimal_field("rhs", rhs)
+        val resultField = decimal_type_to_decimal_field("result", result)
+        val tableName = "${lhsField.uniqueType()}_${op.substring(0, op.length - 2)}_${rhsField.uniqueType()}_eq_${resultField.uniqueType()}".toLowerCase()
+        return Table(tableName, listOf(seq, lhsField, rhsField, resultField), 1, TableType.DUPLICATE_TABLE)
     }
 
     @Test
@@ -652,45 +726,5 @@ class TestMisc {
                 DecimalType(128, 37, 10),
                 DecimalType(128, 19, 0),
                 DecimalType(128, 38, 0))
-    }
-
-    @Test
-    fun testDiv() {
-        val div = make_div(32)
-        val a = div(BigDecimal(BigInteger("99999"), 0), BigDecimal(BigInteger.ZERO, 2))
-        val b = div(BigDecimal(BigInteger("99999"), 4), BigDecimal(BigInteger.ZERO, 2))
-        println(a)
-        println(b)
-        // -59401, rhs=-1.21
-
-        val c = div(BigDecimal(BigInteger("-59401"), 0), BigDecimal(BigInteger("-121"), 2))
-        println(c)
-    }
-
-    @Test
-    fun test() {
-        val v = BigInteger.ONE.shiftLeft(31)
-        println(two_complement(v, 32))
-    }
-
-    @Test
-    fun test1() {
-        val max_bin = max_bin_decimal(32, 0)
-        val min_bin = min_bin_decimal(32, 0)
-        val max_dec = max_dec_decimal(9, 0)
-        val min_dec = min_dec_decimal(9, 0)
-        println(max_bin)
-        println(min_bin)
-        println(max_dec)
-        println(min_dec)
-    }
-
-    @Test
-    fun test2() {
-        val value = BigInteger("99999000")
-        val dec = BigDecimal(value, 3)
-        val a = dec.remainder(BigDecimal.ONE)
-        println(a);
-        println(a.unscaledValue() == BigInteger.ZERO)
     }
 }

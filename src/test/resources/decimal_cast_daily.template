@@ -1,0 +1,5 @@
+main(name, castExpr) ::= <<
+    @attr("system")
+    def test_<name>(self):
+        self.test_decimal_cast_helper("<name>", "<castExpr>")
+>>

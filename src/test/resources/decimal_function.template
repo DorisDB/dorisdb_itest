@@ -1,0 +1,6 @@
+main(name,fp) ::= <<
+    @attr("system")
+    def test_<name>(self):
+        self.test_decimal_function_helper("<name>", "<fp>")
+
+>>

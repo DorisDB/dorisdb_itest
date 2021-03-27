@@ -1,0 +1,6 @@
+main(name, operator, fp, numRows) ::= <<
+    @attr("system")
+    def test_<name>(self):
+        self.test_arithmetic_operation_helper("<name>", "<operator>", <numRows>, "<fp>")
+
+>>

@@ -222,7 +222,7 @@ object Util {
                 TypeDescription.Category.MAP -> TODO()
                 TypeDescription.Category.STRUCT -> TODO()
                 TypeDescription.Category.UNION -> TODO()
-                else->TODO()
+                else -> TODO()
             }
         }
     }
@@ -274,6 +274,9 @@ object Util {
         writer.close()
     }
 
+    fun <A, B> crossProduct(xs: List<A>, ys: List<B>) =
+            xs.flatMap { x -> ys.map { y -> x to y } }
+
     private val fileLockDir = Paths.get("/tmp/dorisdb-port-locks")
     private val fileLocks = mutableMapOf<Path, FileLock>()
 
@@ -320,6 +323,7 @@ object Util {
             it.close()
         }
     }
+
     fun enclosedOutputStream(file: File, cb: (PrintStream) -> Unit) {
         file.outputStream().let {
             PrintStream(it)
@@ -626,12 +630,13 @@ object Util {
         return renderTemplate(template, "main", parameters.toMap())
     }
 
-    fun listResource(subdir: String, filter: (File)->Boolean):List<File>{
+    fun listResource(subdir: String, filter: (File) -> Boolean): List<File> {
         val p = this.javaClass.classLoader.getResource(subdir).path
         return File(p).listFiles()!!.filter(filter)
     }
-    fun listResource(subdir: String, fileExt:String):List<File> {
-        return listResource(subdir){file->
+
+    fun listResource(subdir: String, fileExt: String): List<File> {
+        return listResource(subdir) { file ->
             file.isFile && file.name.endsWith(fileExt)
         }
     }

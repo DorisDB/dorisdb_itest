@@ -67,7 +67,7 @@ object StreamLoad {
 
         println(
                 """
-          cat <<<'DONE' |curl --location-trusted -u $user:$password $headerString -T - $uri
+          cat <<'DONE' |curl --location-trusted -u $user:$password $headerString -T - $uri
           ${String(data).split("\n").take(10).joinToString("\n")}
           DONE
         """.split("\n").map { it.trim() }.joinToString("\n"))

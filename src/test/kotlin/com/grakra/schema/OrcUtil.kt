@@ -101,20 +101,27 @@ object OrcUtil {
     }
 
 
-    fun getDefaultValueGeneratorsForOrc(fields: List<Field>): Map<String, () -> Any> {
+    fun getDefaultValueGeneratorsForOrc(fields: List<Field>, vararg customizedGenerators: Pair<String, () -> Any>): Map<String, () -> Any> {
         val generators = getDefaultGenerators(fields)
         val largeIntFields = getNamesOfLargeIntFields(fields).toSet()
+        val customizedGeneratorsMap = customizedGenerators.toMap();
         return generators.map { (name, gen) ->
             if (largeIntFields.contains(name)) {
                 name to RandUtil.generateRandomBigInt(50)
             } else {
                 name to gen
             }
+        }.map { (name, gen) ->
+            if (customizedGeneratorsMap.containsKey(name)) {
+                name to customizedGeneratorsMap.getValue(name)
+            } else {
+                name to gen
+            }
         }.toMap()
     }
 
-    fun getDefaultKeyGeneratorsForOrc(fields: List<Field>): Map<String, () -> Any> {
-        val generators = getDefaultValueGeneratorsForOrc(fields)
+    fun getDefaultKeyGeneratorsForOrc(fields: List<Field>, vararg customizedGenerators: Pair<String, () -> Any>): Map<String, () -> Any> {
+        val generators = getDefaultValueGeneratorsForOrc(fields, *customizedGenerators)
         return generators.map { (key, gen) ->
             key to RandUtil.getFiniteSetGenerator(20, gen)
         }.toMap()
@@ -179,7 +186,9 @@ object OrcUtil {
             }
             is CharField, is VarCharField ->
                 return {
-                    (cv as BytesColumnVector).setVal(idx(), String(generator() as ByteArray).toByteArray())
+                    val i = idx()
+                    val bytes = String(generator() as ByteArray).toByteArray()
+                    (cv as BytesColumnVector).setVal(i, bytes)
                 }
             is DecimalField ->
                 return {
@@ -219,16 +228,16 @@ object OrcUtil {
             }
             is DefaultValueField -> return generateSetOrcCell(cv, f.fld, generator, chunkMaxSize)
             is TrivialCompoundField -> return generateSetOrcCell(cv, f.fld, generator, chunkMaxSize)
-            is AggregateField->return generateSetOrcCell(cv, f.fld, generator, chunkMaxSize)
+            is AggregateField -> return generateSetOrcCell(cv, f.fld, generator, chunkMaxSize)
         }
     }
 
-    fun generateAppendChunk(keyFields: List<SimpleField>, valueFields: List<Field>, chunkMaxSize: Int): (Int) -> VectorizedRowBatch {
+    fun generateAppendChunk(keyFields: List<SimpleField>, valueFields: List<Field>, chunkMaxSize: Int, vararg customizedGenerators: Pair<String, () -> Any>): (Int) -> VectorizedRowBatch {
         val fields = keyFields + valueFields;
         val schema = createOrcSchemaFromFields(fields)
         val rowBatch = schema.createRowBatch(chunkMaxSize)
-        val keyGenerators = getDefaultKeyGeneratorsForOrc(keyFields)
-        val valueGenerators = getDefaultValueGeneratorsForOrc(valueFields)
+        val keyGenerators = getDefaultKeyGeneratorsForOrc(keyFields, *customizedGenerators)
+        val valueGenerators = getDefaultValueGeneratorsForOrc(valueFields, *customizedGenerators)
         val generators = keyGenerators + valueGenerators
         val fieldArray = fields.toTypedArray()
         val setCells = (0 until rowBatch.numCols).map { c ->
@@ -255,7 +264,8 @@ object OrcUtil {
                 "columnList" to (table.keyFields() + table.valueFields(emptySet())).map { it.name })
     }
 
-    fun createOrcFile(path: String, keyFields: List<SimpleField>, valueFields: List<Field>, rowsNum: Int, maxChunkSize: Int) {
+    fun createOrcFile(path: String, keyFields: List<SimpleField>, valueFields: List<Field>, rowsNum: Int, maxChunkSize: Int,
+                      vararg customizedGenerators: Pair<String, () -> Any>) {
         val conf = Configuration()
         val dfsPath = org.apache.hadoop.fs.Path(path)
         val file = File(path)
@@ -264,7 +274,7 @@ object OrcUtil {
             file.delete()
         }
         val writer = OrcFile.createWriter(dfsPath, OrcFile.writerOptions(conf).setSchema(schema))
-        val appendChunk = generateAppendChunk(keyFields, valueFields, maxChunkSize)
+        val appendChunk = generateAppendChunk(keyFields, valueFields, maxChunkSize, *customizedGenerators)
         val chunkSizes = Array(rowsNum / maxChunkSize) { maxChunkSize } + arrayOf(rowsNum % maxChunkSize)
         chunkSizes.forEach { chunkSize ->
             writer.addRowBatch(appendChunk(chunkSize))
@@ -287,17 +297,22 @@ object OrcUtil {
         val timestampFmt = SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
         val dateFmt = SimpleDateFormat("yyyy-MM-dd")
         return { i ->
+            val ii = if (vector.isRepeating) {
+                0
+            } else {
+                i
+            }
             when (desc.category) {
                 TypeDescription.Category.STRING,
                 TypeDescription.Category.VARCHAR,
                 TypeDescription.Category.CHAR,
                 TypeDescription.Category.BINARY -> {
                     val bytesVector = vector as BytesColumnVector
-                    String(bytesVector.vector[i], bytesVector.start[i], bytesVector.length[i], Charsets.UTF_8)
+                    String(bytesVector.vector[ii], bytesVector.start[ii], bytesVector.length[ii], Charsets.UTF_8)
                 }
                 TypeDescription.Category.BOOLEAN -> {
                     val longVector = vector as LongColumnVector
-                    if (longVector.vector[i] == 1L) {
+                    if (longVector.vector[ii] == 1L) {
                         "TRUE"
                     } else {
                         "FALSE"
@@ -309,26 +324,26 @@ object OrcUtil {
                 TypeDescription.Category.INT,
                 TypeDescription.Category.LONG -> {
                     val longVector = vector as LongColumnVector
-                    longVector.vector[i].toString()
+                    longVector.vector[ii].toString()
                 }
                 TypeDescription.Category.FLOAT,
                 TypeDescription.Category.DOUBLE -> {
                     val byteVector = vector as DoubleColumnVector
-                    byteVector.vector[i].toString()
+                    byteVector.vector[ii].toString()
                 }
                 TypeDescription.Category.DATE -> {
                     val dateVector = vector as LongColumnVector
-                    val date = Date(dateVector.vector[i] * 86400000)
+                    val date = Date(dateVector.vector[ii] * 86400000)
                     //date.time = dateVector.vector[i]
                     dateFmt.format(date)
                 }
                 TypeDescription.Category.TIMESTAMP -> {
                     val datetimeVector = vector as TimestampColumnVector
-                    timestampFmt.format(datetimeVector.getTime(i))
+                    timestampFmt.format(datetimeVector.getTime(ii))
                 }
                 TypeDescription.Category.DECIMAL -> {
                     val decimalVector = vector as DecimalColumnVector
-                    decimalVector.vector[i].hiveDecimal.toFormatString(desc.scale)
+                    decimalVector.vector[ii].hiveDecimal.toFormatString(desc.scale)
                 }
                 TypeDescription.Category.LIST -> TODO()
                 TypeDescription.Category.MAP -> TODO()
@@ -383,7 +398,7 @@ object OrcUtil {
         orcToCVSOutputStream(orcPath, System.out, *fields)
     }
 
-    fun orcToList(orcPath: String, vararg fields: String):List<List<String>> {
+    fun orcToList(orcPath: String, vararg fields: String): List<List<String>> {
         val conf = Configuration()
         val dfsPath = org.apache.hadoop.fs.Path(orcPath)
         val reader = OrcFile.createReader(dfsPath, OrcFile.ReaderOptions(conf))

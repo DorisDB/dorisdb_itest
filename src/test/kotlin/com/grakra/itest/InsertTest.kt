@@ -7,6 +7,8 @@ import org.testng.Assert
 import org.testng.annotations.Listeners
 import org.testng.annotations.Test
 import java.io.File
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.locks.LockSupport
 
 @Listeners(TestMethodCapture::class)
 class InsertTest : DorisDBRemoteITest() {
@@ -140,10 +142,10 @@ class InsertTest : DorisDBRemoteITest() {
                 //table1.notNullableTable().aggregateTable(listOf(AggregateType.HLL_UNION)).renameTable("not_nullable_aggregate_hll_union_table"),
                 //table1.notNullableTable().aggregateTable(listOf(AggregateType.PERCENTILE_UNION)).renameTable("not_nullable_aggregate_percentile_union_table")
 
-                )
+        )
 
-        val tablePairs = tables.map{it to it.renameTable(it.tableName+"_ya")}
-        tablePairs.forEach {(table, tableYa)->
+        val tablePairs = tables.map { it to it.renameTable(it.tableName + "_ya") }
+        tablePairs.forEach { (table, tableYa) ->
             generate_insert_daily_cases(db, table, tableYa, createSqlPrefix, dataCsvPrefix, casesPrefix)
         }
     }
@@ -154,5 +156,79 @@ class InsertTest : DorisDBRemoteITest() {
         val table2 = table1.nullableTable().aggregateTable(listOf(AggregateType.SUM)).renameTable("nullable_aggregate_sum_table")
         println(table1.sql())
         println(table2.sql())
+    }
+
+    val decimalv2_table = Table("decimalv2_table", listOf(
+            SimpleField.fixedLength("col_int", FixedLengthType.TYPE_INT),
+            SimpleField.decimalv2("col_decimal", 18, 2)), 1)
+
+    @Test
+    fun test_create_decimalv2_table() {
+        //create_db(db)
+        //create_table(db, decimalv2_table)
+        //LockSupport.parkNanos(TimeUnit.SECONDS.toNanos(3))
+        val bytes = "1,-5.1234567891\n".toByteArray()
+        val status = StreamLoad.streamLoad(
+                "39.103.134.93", 8333, db, decimalv2_table.tableName, ",", bytes)
+        Assert.assertTrue(status)
+    }
+
+    @Test
+    fun test_zhaohen_fail_case() {
+        val fields = listOf(
+                SimpleField.varchar("dt", 255),
+                SimpleField.varchar("semester_type", 255),
+                SimpleField.varchar("end_dt", 255),
+                SimpleField.varchar("subject", 255),
+                SimpleField.varchar("period_type", 255),
+                SimpleField.varchar("level", 255),
+                SimpleField.varchar("city_type", 255),
+                SimpleField.varchar("user_from", 255),
+                SimpleField.varchar("ad_channel", 255),
+                SimpleField.varchar("age_buy_lesson_type", 255),
+                SimpleField.varchar("order_type", 255),
+                SimpleField.varchar("buy_way", 255),
+                SimpleField.varchar("buy_season_rate", 255),
+                SimpleField.varchar("active_rate", 255),
+                SimpleField.varchar("attend_by_active", 255),
+                SimpleField.varchar("finish_by_attend", 255),
+                SimpleField.varchar("finish_user_rate", 255),
+                SimpleField.varchar("buy_season_by_finish", 255),
+                SimpleField.varchar("buy_num", 255),
+                SimpleField.varchar("active_num", 255),
+                SimpleField.varchar("attend_num", 255),
+                SimpleField.varchar("finish_num", 255),
+                SimpleField.varchar("buy_season_num", 255),
+                SimpleField.varchar("buy_season_rate_ratio", 255),
+                SimpleField.varchar("active_rate_ratio", 255),
+                SimpleField.varchar("attend_by_active_ratio", 255),
+                SimpleField.varchar("finish_by_attend_ratio", 255),
+                SimpleField.varchar("buy_season_by_finish_ratio", 255),
+                SimpleField.varchar("finish_user_rate_ratio", 255),
+                SimpleField.varchar("buy_num_ratio", 255),
+                SimpleField.varchar("active_num_ratio", 255),
+                SimpleField.varchar("attend_num_ratio", 255),
+                SimpleField.varchar("finish_num_ratio", 255),
+                SimpleField.varchar("buy_season_num_ratio", 255),
+                SimpleField.varchar("rank_num", 255),
+                SimpleField.varchar("buy_season_rate_diff", 255),
+                SimpleField.varchar("active_rate_diff", 255),
+                SimpleField.varchar("attend_by_active_diff", 255),
+                SimpleField.decimalv2("finish_by_attend_diff", 20, 2),
+                SimpleField.varchar("buy_season_by_finish_diff", 255),
+                SimpleField.varchar("buy_num_diff", 255),
+                SimpleField.varchar("active_num_diff", 255),
+                SimpleField.varchar("attend_num_diff", 255),
+                SimpleField.varchar("finish_num_diff", 255),
+                SimpleField.varchar("buy_season_num_diff", 255),
+                SimpleField.varchar("finish_user_rate_diff", 255)
+        )
+        val table = Table(db, fields, 1)
+        create_db(db)
+        create_table(db, table)
+        val bytes = "2021-03-31 0元课 昨日 英语 143-2020/12/07 total_count 四线城市 邀请有奖 total_count 2-3岁 total_count total_count 11.27 100.0 30.99 34.09 10.56 106.67 142 142 44 15 16 69.98 0.0 47.01 -14.77 35.76 25.27 -14.46 -14.46 25.71 7.14 45.45 147 4.64 0.0 9.91 -5.909999999999997 28.10000000000001 -24 -24 9 1 5 2.130000000000001\n".toByteArray()
+        val status = StreamLoad.streamLoad(
+                "39.103.134.93", 8333, db,table.tableName, ",", bytes)
+        Assert.assertTrue(status)
     }
 }

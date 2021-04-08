@@ -68,7 +68,7 @@ class DecimalCastTest : DorisDBRemoteITest() {
         val checkOverflow = DecimalUtil.overflow_policy(
                 decimalType.bits,
                 decimalType.precision,
-                DecimalUtil.OverflowPolicy.BINARY_BOUND_EXCLAIM)
+                DecimalUtil.OverflowPolicy.DECIMAL_BOUND_EXCLAIM)
         return if (scale <= decimalType.scale) {
             val adjustScaleFactor = BigInteger.valueOf(10L).pow(decimalType.scale - scale)!!
             val adjustDecimal = BigDecimal(d.unscaledValue().multiply(adjustScaleFactor), decimalType.scale)
@@ -170,11 +170,11 @@ class DecimalCastTest : DorisDBRemoteITest() {
     fun getIntegerFields(): List<SimpleField> {
         val name = Util.suffixCounter("col_integer", Util.generateCounter())
         return listOf(
-                SimpleField.fixedLength(name(), FixedLengthType.TYPE_BOOLEAN),
+                //SimpleField.fixedLength(name(), FixedLengthType.TYPE_BOOLEAN),
                 SimpleField.fixedLength(name(), FixedLengthType.TYPE_TINYINT),
-                SimpleField.fixedLength(name(), FixedLengthType.TYPE_SMALLINT),
-                SimpleField.fixedLength(name(), FixedLengthType.TYPE_INT),
-                SimpleField.fixedLength(name(), FixedLengthType.TYPE_BIGINT),
+                //SimpleField.fixedLength(name(), FixedLengthType.TYPE_SMALLINT),
+                //SimpleField.fixedLength(name(), FixedLengthType.TYPE_INT),
+                //SimpleField.fixedLength(name(), FixedLengthType.TYPE_BIGINT),
                 SimpleField.fixedLength(name(), FixedLengthType.TYPE_LARGEINT)
         )
     }
@@ -204,22 +204,31 @@ class DecimalCastTest : DorisDBRemoteITest() {
     fun getDecimalFields(): List<DecimalField> {
         val name = Util.suffixCounter("col_decimal1", Util.generateCounter())
         return listOf(
-                SimpleField.decimal(name(), 32, 9, 0),
-                SimpleField.decimal(name(), 32, 9, 2),
+                //SimpleField.decimal(name(), 32, 9, 0),
+                //SimpleField.decimal(name(), 32, 9, 2),
                 SimpleField.decimal(name(), 32, 9, 9),
-                SimpleField.decimal(name(), 32, 7, 4),
+                //SimpleField.decimal(name(), 32, 7, 4),
 
                 SimpleField.decimal(name(), 64, 18, 0),
-                SimpleField.decimal(name(), 64, 18, 2),
-                SimpleField.decimal(name(), 64, 18, 9),
-                SimpleField.decimal(name(), 64, 18, 18),
-                SimpleField.decimal(name(), 64, 15, 13),
+                // SimpleField.decimal(name(), 64, 18, 2),
+                // SimpleField.decimal(name(), 64, 18, 9),
+                // SimpleField.decimal(name(), 64, 18, 18),
+                // SimpleField.decimal(name(), 64, 15, 13),
 
-                SimpleField.decimal(name(), 128, 38, 0),
-                SimpleField.decimal(name(), 128, 38, 2),
-                SimpleField.decimal(name(), 128, 38, 9),
-                SimpleField.decimal(name(), 128, 38, 13),
-                SimpleField.decimal(name(), 128, 38, 18),
+                // SimpleField.decimal(name(), 128, 38, 0),
+                // SimpleField.decimal(name(), 128, 38, 2),
+                // SimpleField.decimal(name(), 128, 38, 9),
+                // SimpleField.decimal(name(), 128, 38, 13),
+                SimpleField.decimal(name(), 128, 38, 18)
+                // SimpleField.decimal(name(), 128, 35, 30)
+        )
+    }
+
+    fun getDecimalFields1(): List<DecimalField> {
+        val name = Util.suffixCounter("col_decimal1", Util.generateCounter())
+        return listOf(
+                SimpleField.decimal(name(), 32, 7, 4),
+                SimpleField.decimal(name(), 64, 15, 13),
                 SimpleField.decimal(name(), 128, 35, 30)
         )
     }
@@ -291,44 +300,54 @@ class DecimalCastTest : DorisDBRemoteITest() {
         genCode!!.close()
     }
 
-    fun generateAllTest(fromFields: List<SimpleField>, toFields: List<SimpleField>, category: String, filename: String, casesNum: Int = 100) {
-        val randGens = OrcUtil.getDefaultGenerators(fromFields)
-        val cases = fromFields.flatMap { fa ->
-            toFields.flatMap { fb ->
-                val gen = randGens.getValue(fa.name)
-                val fromType = fa.primitiveType()
-                val toType = fb.primitiveType()
-                val fromUniqueType = fa.uniqueType()
-                val toUniqueType = fb.uniqueType();
-                val (fromPrecision, fromScale) = fa.precisionAndScale()
-                val (toPrecision, toScale) = fb.precisionAndScale()
+    fun generateAllTest(fromToPairList: List<Pair<SimpleField, SimpleField>>, casesNum: Int = 50) {
+        val cases = fromToPairList.flatMap { (fa, fb) ->
+            val randGens = OrcUtil.getDefaultGenerators(listOf(fa))
+            val gen = randGens.getValue(fa.name)
+            val fromUniqueType = fa.uniqueType()
+            val toUniqueType = fb.uniqueType();
 
-                val name = "cast_${fromUniqueType}_as_${toUniqueType}".toLowerCase()
-                val fields = listOf(
-                        SimpleField.fixedLength("seq", FixedLengthType.TYPE_INT),
-                        fa.rename("src"),
-                        CompoundField.nullable(fb.rename("dst"), 50)
-                )
-                val table = Table(name, fields, 1)
-                val values = Array(casesNum) { gen() }.toSet().toTypedArray()
-                val counter = Util.generateCounter()
-                val testCases = values.map { value ->
-                    val targetValue = toType(value, fa, fb)
-                    val seq = counter()
-                    listOf("$seq", "$value", targetValue?.let { "$targetValue" } ?: "NULL")
+            val name = "cast_${fromUniqueType}_as_${toUniqueType}".toLowerCase()
+            val newFb = if (fb is DecimalField){
+                val precision = when (fb.bits) {
+                    128 -> {
+                        38
+                    }
+                    64 -> {
+                        18
+                    }
+                    else -> {
+                        9
+                    }
                 }
-
-                val createSqlPath = "$createSqlPrefix/${table.tableName}.sql"
-                val dataCsvPath = "$dataCsvPrefix/${table.tableName}.csv"
-                Util.createFile(File(createSqlPath), table.sql())
-                Util.createFile(File(dataCsvPath), testCases.joinToString("\n") { it.joinToString(",") })
-                val castExpr = "cast(src as ${fb.sqlType()})"
-                Util.renderTemplate(
-                        "decimal_cast_daily.template",
-                        "name" to name,
-                        "castExpr" to castExpr
-                ).let { listOf(it) }
+                SimpleField.decimal(fb.name, fb.bits, precision, fb.scale)
+            } else {
+                fb
             }
+            val fields = listOf(
+                    SimpleField.fixedLength("seq", FixedLengthType.TYPE_INT),
+                    fa.rename("src"),
+                    CompoundField.nullable(newFb.rename("dst"), 50)
+            )
+            val table = Table(name, fields, 1)
+            val values = Array(casesNum) { gen() }.toSet().toTypedArray()
+            val counter = Util.generateCounter()
+            val testCases = values.map { value ->
+                val targetValue = toType(value, fa, fb)
+                val seq = counter()
+                listOf("$seq", "$value", targetValue?.let { "$targetValue" } ?: "NULL")
+            }
+
+            val createSqlPath = "$createSqlPrefix/${table.tableName}.sql"
+            val dataCsvPath = "$dataCsvPrefix/${table.tableName}.csv"
+            Util.createFile(File(createSqlPath), table.sql())
+            Util.createFile(File(dataCsvPath), testCases.joinToString("\n") { it.joinToString(",") })
+            val castExpr = "cast(src as ${fb.sqlType()})"
+            Util.renderTemplate(
+                    "decimal_cast_daily.template",
+                    "name" to name,
+                    "castExpr" to castExpr
+            ).let { listOf(it) }
         }
         genCode!!.println(cases.joinToString("\n\n"))
     }
@@ -401,49 +420,61 @@ class DecimalCastTest : DorisDBRemoteITest() {
     }
      */
 
+
+    @Test
+    fun test1(){
+        val s="1.218172000197920506"
+        val srcField = SimpleField.decimal("src", 128, 38, 18)
+        val dstField = SimpleField.decimal("dst", 32, 9, 9)
+        val value = BigDecimal(s)
+        println(toType(value, srcField, dstField))
+        val s1="1.882742171651175826"
+        println(toType(BigDecimal(s1), srcField, dstField))
+    }
+
     @Test
     fun testAllIntegerToDecimalUT() {
-        generateAllTest(getIntegerFields(), getDecimalFields(), "Integer", "cast_from_integer_to_decimal")
+        generateAllTest(Util.crossProduct(getIntegerFields(), getDecimalFields1()))
     }
 
     @Test
     fun testAllFloatToDecimalUT() {
-        generateAllTest(getFloatFields(), getDecimalFields(), "Float", "cast_from_float_to_decimal")
+        generateAllTest(Util.crossProduct(getFloatFields(), getDecimalFields1()))
     }
 
-    @Test
-    fun testAllTimeToDecimalUT() {
-        generateAllTest(getTimeFields(), getDecimalFields(), "Time", "cast_from_time_to_decimal")
-    }
+    // @Test
+    // fun testAllTimeToDecimalUT() {
+    //     generateAllTest(getTimeFields(), getDecimalFields(), "Time", "cast_from_time_to_decimal")
+    // }
 
     @Test
     fun testAllDecimalToDecimalUT() {
-        generateAllTest(getDecimalFields(), getDecimalFields(), "Decimal", "cast_from_decimal_to_decimal")
+        generateAllTest(Util.crossProduct(getDecimalFields(), getDecimalFields()))
     }
 
     @Test
     fun testAllDecimalV2ToDecimalUT() {
-        generateAllTest(getDecimalV2Fields(), getDecimalFields(), "DecimalV2", "cast_from_decimalv2_to_decimal")
+        generateAllTest(Util.crossProduct(getDecimalV2Fields(), getDecimalFields1()))
     }
 
     @Test
     fun testAllDecimalToIntegerUT() {
-        generateAllTest(getDecimalFields(), getIntegerFields(), "Integer", "cast_from_decimal_to_integer")
+        generateAllTest(Util.crossProduct(getDecimalFields1(), getIntegerFields()))
     }
 
     @Test
     fun testAllDecimalToFloatUT() {
-        generateAllTest(getDecimalFields(), getFloatFields(), "Float", "cast_from_decimal_to_float")
+        generateAllTest(Util.crossProduct(getDecimalFields1(), getFloatFields()))
     }
 
-    @Test
-    fun testAllDecimalToTimeUT() {
-        generateAllTestReverse(getTimeFields(), getDecimalFields(), "Time", "cast_from_decimal_to_time")
-    }
+    // @Test
+    // fun testAllDecimalToTimeUT() {
+    //     generateAllTestReverse(getTimeFields(), getDecimalFields(), "Time", "cast_from_decimal_to_time")
+    // }
 
     @Test
     fun testAllDecimalToDecimalV2UT() {
-        generateAllTest(getDecimalFields(), getDecimalV2Fields(), "DecimalV2", "cast_from_decimal_to_decimalv2")
+        generateAllTest(Util.crossProduct(getDecimalFields1(), getDecimalV2Fields()))
     }
 
     /*

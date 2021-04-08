@@ -337,7 +337,12 @@ class DecimalArithmeticTest : DorisDBRemoteITest() {
         }
 
         val testCases = decimal_triple2string(
-                decimal_pair2triple(specialInputs.plus(randInputs), op, overflow_policy(resultType.bits, resultType.precision, OverflowPolicy.BINARY_BOUND_QUIET)))
+                decimal_pair2triple(
+                        specialInputs.plus(randInputs),
+                        op,
+                        overflow_policy(resultType.bits, resultType.precision, OverflowPolicy.DECIMAL_BOUND_EXCLAIM)).filter { triple ->
+                    triple.all { e -> e != null }
+                }.toTypedArray())
 
         val table = create_table_from_decimal_triple(opName, lhsType, rhsType, resultType)
         val createSqlPath = "$createSqlPrefix/${table.tableName}.sql"

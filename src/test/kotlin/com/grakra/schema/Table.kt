@@ -24,6 +24,23 @@ class Table(val tableName: String, val fields: List<Field>, val keyLimit: Int, v
 
     }
 
+    fun alterTable(db:String, field: Field): Pair<String?, Table> {
+        var alterStmt: String? = null
+        val changedFields = fields.map { f ->
+            if (f.name == field.name) {
+                alterStmt = "ALTER TABLE $db.$tableName MODIFY COLUMN ${field.sql()} "
+                field
+            } else {
+                f
+            }
+        }
+        return (alterStmt to Table(tableName, changedFields, keyLimit))
+    }
+
+    fun showAlterTableColumnSql():String {
+        return "SHOW ALTER TABLE COLUMN WHERE TableName = '$tableName' ORDER BY CreateTime DESC LIMIT 1"
+    }
+
     fun selectAll() = "select * from $tableName"
 
     fun brokerLoadSql(db: String, format: String, hdfsPath: String): String {

@@ -3,12 +3,15 @@ package com.grakra.itest
 import com.google.common.base.Preconditions
 import com.grakra.TestMethodCapture
 import com.grakra.dorisdb.MySQLClient
+import com.grakra.schema.OrcUtil
 import com.grakra.schema.ParquetUtil
 import com.grakra.schema.SqlUtil
 import com.grakra.schema.Table
 import com.grakra.util.Util
 import org.testng.Assert
 import org.testng.annotations.Listeners
+import java.io.File
+import java.util.concurrent.TimeUnit
 
 
 @Listeners(TestMethodCapture::class)
@@ -35,6 +38,13 @@ open class DorisDBRemoteITest : KotlinITest() {
                 }
             }
         }
+    }
+
+    fun create_db_sql(db: String):String {
+        return "drop database if exists $db;create database if not exists $db"
+    }
+    fun drop_db_sql(db:String):String {
+        return "drop database if exists $db"
     }
 
     fun enable_decimal_v3(enable: Boolean) {
@@ -79,6 +89,17 @@ open class DorisDBRemoteITest : KotlinITest() {
         }
     }
 
+    fun check_alter_table_finished(db: String, table: Table) {
+        val sql = table.showAlterTableColumnSql()
+        Util.timed(60, 1, TimeUnit.SECONDS) {
+            val rs = query(db, sql)
+            println(rs)
+            rs.size == 1 && rs.first().contains("State") && rs.first().getValue("State") == "FINISHED"
+        }.let {
+            Assert.assertTrue(it)
+        }
+    }
+
     fun admin_set_vectorized_load_enable(enable: Boolean) {
         val key = "vectorized_load_enable"
         admin_set_frontend_config(key, enable)
@@ -116,6 +137,34 @@ open class DorisDBRemoteITest : KotlinITest() {
         }
     }
 
+    fun insert_values_sql(db: String, table: Table, rowsNum: Int, vararg customizedGenerators: Pair<String, () -> Any>): String {
+        val orcPath = "$db.${table.tableName}.orc"
+        OrcUtil.createOrcFile(
+                orcPath,
+                table.keyFields(),
+                table.valueFields(setOf()),
+                rowsNum,
+                4096,
+                *customizedGenerators)
+        val fieldNames = table.fields.map { it.name }.toTypedArray()
+        val tuples = OrcUtil.orcToList(orcPath, *fieldNames)
+        // val csvTablesPath = "$csvTuplesPrefix/${table.tableName}.csv"
+        // Util.createFile(File(csvTablesPath), tuples.joinToString("\n") { it.joinToString(", ") })
+        return table.insertIntoValuesSql(tuples)
+    }
+
+    fun insert_values(db: String, table: Table, rowsNum: Int, vararg customizedGenerators: Pair<String, () -> Any>) {
+        execute(db, insert_values_sql(db, table, rowsNum, *customizedGenerators))
+    }
+
+    fun insert_select(db: String, dstTable: Table, srcTable: Table) {
+        val sql = dstTable.insertIntoSubQuerySql(srcTable.selectAll())
+        execute(db, sql)
+        val fp0 = fingerprint_murmur_hash3_32(db, dstTable.selectAll())
+        val fp1 = fingerprint_murmur_hash3_32(db, srcTable.selectAll())
+        Assert.assertEquals(fp0, fp1)
+    }
+
     fun compare_two_tables(db0: String, db1: String, table0: String, table1: String) {
         val fp0 = fingerprint_murmur_hash3_32(db0, "select * from $table0")
         val fp1 = fingerprint_murmur_hash3_32(db1, "select * from $table1")
@@ -148,14 +197,18 @@ open class DorisDBRemoteITest : KotlinITest() {
             val colCvs = colGroup.joinToString(",")
             val fp0 = fingerprint_murmur_hash3_32(db, "select $colCvs from $table0")
             val fp1 = fingerprint_murmur_hash3_32(db, "select $colCvs from $table1")
-            val result = if (fp0==fp1){"PASS"}else {"FAIL"}
+            val result = if (fp0 == fp1) {
+                "PASS"
+            } else {
+                "FAIL"
+            }
             println("### [test column group($result)]:  ($colCvs): fp0=$fp0, fp1=$fp1")
             //Assert.assertEquals(fp0, fp1)
         }
     }
 
-    fun compare_each_column(db:String, table0:String, table1:String, columns:List<String>){
-        val columnGroups  = columns.map{listOf(it)}.toTypedArray()
+    fun compare_each_column(db: String, table0: String, table1: String, columns: List<String>) {
+        val columnGroups = columns.map { listOf(it) }.toTypedArray()
         compare_columns(db, table0, table1, *columnGroups)
     }
 
@@ -164,7 +217,7 @@ open class DorisDBRemoteITest : KotlinITest() {
         broker_load(loadSql)
     }
 
-    fun broker_load_and_compute_fingerprint(db:String, table:Table, format:String, hdfsPath:String){
+    fun broker_load_and_compute_fingerprint(db: String, table: Table, format: String, hdfsPath: String) {
         val loadSql = table.brokerLoadSql(db, format, hdfsPath)
         create_table(db, table)
         broker_load(loadSql)

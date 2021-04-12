@@ -231,4 +231,12 @@ class InsertTest : DorisDBRemoteITest() {
                 "39.103.134.93", 8333, db,table.tableName, ",", bytes)
         Assert.assertTrue(status)
     }
+
+    @Test
+    fun enable_disable_new_planer(){
+        admin_set_frontend_config("enable_new_planner", false)
+        admin_show_frontend_config("enable_new_planner")
+        execute(db, "set enable_new_planner = false")
+        query_print(db, "show variables")
+    }
 }

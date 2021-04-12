@@ -121,9 +121,14 @@ object OrcUtil {
     }
 
     fun getDefaultKeyGeneratorsForOrc(fields: List<Field>, vararg customizedGenerators: Pair<String, () -> Any>): Map<String, () -> Any> {
-        val generators = getDefaultValueGeneratorsForOrc(fields, *customizedGenerators)
+        val generators = getDefaultValueGeneratorsForOrc(fields)
+        val customizedGeneratorsMap= customizedGenerators.toMap()
         return generators.map { (key, gen) ->
-            key to RandUtil.getFiniteSetGenerator(20, gen)
+            if (customizedGeneratorsMap.containsKey(key)) {
+                key to customizedGeneratorsMap.getValue(key)
+            } else {
+                key to RandUtil.getFiniteSetGenerator(20, gen)
+            }
         }.toMap()
     }
 

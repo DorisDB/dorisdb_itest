@@ -28,7 +28,7 @@ class Table(val tableName: String, val fields: List<Field>, val keyLimit: Int, v
         var alterStmt: String? = null
         val changedFields = fields.map { f ->
             if (f.name == field.name) {
-                alterStmt = "ALTER TABLE $db.$tableName MODIFY COLUMN ${field.sql()} "
+                alterStmt = "ALTER TABLE $db.$tableName MODIFY COLUMN ${field.sql()};"
                 field
             } else {
                 f

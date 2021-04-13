@@ -11,6 +11,7 @@ import org.testng.annotations.Test
 import java.io.File
 import java.math.BigDecimal
 import java.math.BigInteger
+import java.math.RoundingMode
 import java.sql.Date
 import java.sql.Timestamp
 import java.text.SimpleDateFormat
@@ -67,8 +68,9 @@ class GenerateDecimalCastTestCases {
             val adjustDecimal = BigDecimal(d.unscaledValue().multiply(adjustScaleFactor), decimalType.scale)
             checkOverflow(adjustDecimal)
         } else {
-            val adjustScaleFactor = BigInteger.valueOf(10L).pow(scale - decimalType.scale)!!
-            val adjustDecimal = BigDecimal(d.unscaledValue().divide(adjustScaleFactor), decimalType.scale)
+            //val adjustScaleFactor = BigInteger.valueOf(10L).pow(scale - decimalType.scale)!!
+            //val adjustDecimal = BigDecimal(d.unscaledValue().divide(adjustScaleFactor), decimalType.scale)
+            val adjustDecimal = d.setScale(decimalType.scale, RoundingMode.HALF_UP)
             checkOverflow(adjustDecimal)
         }
     }
@@ -494,5 +496,14 @@ class GenerateDecimalCastTestCases {
             date.time = time
             println(dateFMT.format(date))
         }
+    }
+    @Test
+    fun testDecimalCastToCast(){
+        val v = BigInteger("31415926")
+        val dec = BigDecimal(v, 7)
+        println(dec)
+        val dec2 = toDecimal(dec, DecimalType(64, 18,4))
+        println(dec2)
+        println(dec.setScale(4, RoundingMode.HALF_UP))
     }
 }

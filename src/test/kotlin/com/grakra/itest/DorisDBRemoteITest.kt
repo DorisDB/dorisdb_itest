@@ -181,16 +181,21 @@ open class DorisDBRemoteITest : KotlinITest() {
         return fpRs.first().getValue("fingerprint") as Long
     }
 
-    fun fingerprint_sql(db: String, hashFunc: String, sql: String): String {
-        val rs = query(db, SqlUtil.limit1(sql))
-        Assert.assertTrue(rs.isNotEmpty())
-        val colNames = rs.first().keys.toList()
+    fun fingerprint_sql(db: String, hashFunc: String, sql: String, vararg columns: String): String {
+        val colNames = if (columns.isEmpty()) {
+            val rs = query(db, SqlUtil.limit1(sql))
+            Assert.assertTrue(rs.isNotEmpty())
+            rs.first().keys.toList()
+        } else {
+            columns.toList()
+        }
         return SqlUtil.fingerprint(hashFunc, colNames, sql)
     }
 
 
     fun fingerprint_murmur_hash3_32(db: String, sql: String) = fingerprint(db, "murmur_hash3_32", sql)
-    fun fingerprint_murmur_hash3_32_sql(db: String, sql: String) = fingerprint_sql(db, "murmur_hash3_32", sql)
+    fun fingerprint_murmur_hash3_32_sql(db: String, sql: String, vararg columns: String)
+            = fingerprint_sql(db, "murmur_hash3_32", sql, *columns)
 
     fun compare_columns(db: String, table0: String, table1: String, vararg columnGroups: List<String>) {
         columnGroups.forEach { colGroup ->

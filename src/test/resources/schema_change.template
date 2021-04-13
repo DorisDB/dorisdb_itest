@@ -1,0 +1,23 @@
+main(name, sqlFp0, sqlFp1) ::= <<
+    @attr("system")
+    def test_<name>(self):
+        name = "<name>"
+        db = "db_%s" % name
+        res = self.create_and_use_database(db)
+        ok_(res["status"], res)
+        self.database_list.append(db)
+        res = self.execute_sql(self.get_sql_from_file("decimal_schema_change/%s.sql" % name), "dml")
+        ok_(res["status"], res)
+        self.check_schema_change_done("test_table")
+        fp_sql0 = "<sqlFp0>"
+        fp_sql1 = "<sqlFp1>"
+        res = self.execute_sql(fp_sql0, "dml")
+        ok_(res["status"], res)
+        fp0 = res["result"][0][0]
+        ok_(fp0, res)
+        res = self.execute_sql(fp_sql1, "dml")
+        ok_(res["status"], res)
+        fp1 = res["result"][0][0]
+        ok_(fp1, res)
+        ok_(fp0 == fp1, "fp0(%d) != fp1(%d)" % (fp0, fp1))
+>>

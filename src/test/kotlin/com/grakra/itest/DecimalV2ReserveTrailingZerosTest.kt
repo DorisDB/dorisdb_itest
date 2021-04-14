@@ -4,12 +4,9 @@ import com.grakra.TestMethodCapture
 import com.grakra.schema.FixedLengthType
 import com.grakra.schema.SimpleField
 import com.grakra.schema.Table
-import com.grakra.util.Util
 import org.testng.Assert
 import org.testng.annotations.Listeners
 import org.testng.annotations.Test
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.locks.LockSupport
 
 @Listeners(TestMethodCapture::class)
 class DecimalV2ReserveTrailingZerosTest : DorisDBRemoteITest() {

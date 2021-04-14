@@ -1,7 +1,4 @@
-package com.grakra.dorisdb
-
-import com.grakra.util.HiveUtil
-import com.grakra.util.thread_local
+package com.grakra.util
 
 class HiveClient(private val hostPort: String, private val user:String, private val password:String) {
     private var db2client: MutableMap<String, HiveUtil.Sql>? by thread_local()

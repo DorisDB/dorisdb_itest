@@ -1,7 +1,6 @@
-package com.grakra.dorisdb
+package com.grakra.util
 
-import com.grakra.util.Result
-import com.grakra.util.Util
+import com.grakra.AbstractProcess
 import org.testng.Assert
 import java.io.File
 

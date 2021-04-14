@@ -3,7 +3,7 @@ package com.grakra.itest
 import com.grakra.TestMethodCapture
 import com.grakra.schema.*
 import com.grakra.util.Util
-import org.testng.Assert
+import com.grakra.schema.*
 import org.testng.annotations.AfterClass
 import org.testng.annotations.BeforeClass
 import org.testng.annotations.Listeners

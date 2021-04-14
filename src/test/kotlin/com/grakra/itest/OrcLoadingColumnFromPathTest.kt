@@ -1,11 +1,13 @@
 package com.grakra.itest
 
 import com.grakra.TestMethodCapture
-import com.grakra.schema.*
-import com.grakra.util.Util
 import org.testng.Assert
 import org.testng.annotations.Listeners
 import org.testng.annotations.Test
+import com.grakra.schema.FixedLengthType
+import com.grakra.schema.OrcUtil
+import com.grakra.schema.SimpleField
+import com.grakra.schema.Table
 
 @Listeners(TestMethodCapture::class)
 class OrcLoadingColumnFromPathTest : DorisDBRemoteITest() {

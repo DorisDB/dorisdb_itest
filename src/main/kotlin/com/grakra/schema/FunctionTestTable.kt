@@ -97,15 +97,15 @@ object FunctionTestTable {
 
     fun createTableSql(table: String): String {
         return Table(table,
-                FunctionTestTable.keyFields + FunctionTestTable.valueFields,
-                FunctionTestTable.keyFields.size).sql()
+                keyFields + valueFields,
+                keyFields.size).sql()
     }
 
     fun createOrcFile() {
         OrcUtil.createOrcFile(
                 "decimal_all_types.orc",
-                FunctionTestTable.keyFields,
-                FunctionTestTable.valueFields,
+                keyFields,
+                valueFields,
                 40971,
                 4096)
     }

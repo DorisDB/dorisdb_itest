@@ -5,10 +5,8 @@ import com.grakra.DecimalType
 import com.grakra.TestMethodCapture
 import com.grakra.schema.*
 import com.grakra.util.DecimalUtil
-import com.grakra.util.RandUtil
 import com.grakra.util.Util
-import net.bytebuddy.asm.AsmVisitorWrapper
-import org.testng.Assert
+import com.grakra.schema.*
 import org.testng.annotations.AfterClass
 import org.testng.annotations.BeforeClass
 import org.testng.annotations.Listeners
@@ -17,6 +15,7 @@ import java.io.File
 import java.io.PrintStream
 import java.math.BigDecimal
 import java.math.BigInteger
+import java.math.RoundingMode
 import java.sql.Date
 import java.sql.Timestamp
 import java.text.SimpleDateFormat
@@ -74,8 +73,7 @@ class DecimalCastTest : DorisDBRemoteITest() {
             val adjustDecimal = BigDecimal(d.unscaledValue().multiply(adjustScaleFactor), decimalType.scale)
             checkOverflow(adjustDecimal)
         } else {
-            val adjustScaleFactor = BigInteger.valueOf(10L).pow(scale - decimalType.scale)!!
-            val adjustDecimal = BigDecimal(d.unscaledValue().divide(adjustScaleFactor), decimalType.scale)
+            val adjustDecimal = d.setScale(decimalType.scale, RoundingMode.HALF_UP)
             checkOverflow(adjustDecimal)
         }
     }

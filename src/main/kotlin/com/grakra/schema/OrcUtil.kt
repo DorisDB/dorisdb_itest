@@ -10,14 +10,12 @@ import org.apache.hadoop.hive.serde2.io.HiveDecimalWritable
 import org.apache.orc.OrcFile
 import org.apache.orc.TypeDescription
 import java.io.File
-import java.io.OutputStream
 import java.io.PrintStream
 import java.math.BigDecimal
 import java.nio.file.Files
 import java.sql.Date
 import java.sql.Timestamp
 import java.text.SimpleDateFormat
-import java.util.*
 
 object OrcUtil {
     fun field2OrcTypeDecription(f: Field): TypeDescription {

@@ -29,11 +29,11 @@ abstract sealed class SimpleField(override val name: String) : Field(name) {
 
     fun rename(newName: String): SimpleField {
         return when (this) {
-            is FixedLengthField -> SimpleField.fixedLength(newName, this.type)
-            is CharField -> SimpleField.char(newName, this.len)
-            is VarCharField -> SimpleField.varchar(newName, this.len)
-            is DecimalField -> SimpleField.decimal(newName, this.bits, this.precision, this.scale)
-            is DecimalV2Field -> SimpleField.decimalv2(newName, this.precision, this.scale)
+            is FixedLengthField -> fixedLength(newName, this.type)
+            is CharField -> char(newName, this.len)
+            is VarCharField -> varchar(newName, this.len)
+            is DecimalField -> decimal(newName, this.bits, this.precision, this.scale)
+            is DecimalV2Field -> decimalv2(newName, this.precision, this.scale)
         }
     }
 
@@ -78,7 +78,7 @@ abstract sealed class SimpleField(override val name: String) : Field(name) {
             is CharField -> "$typ(${this.len})"
             is VarCharField -> "$typ(${this.len})"
             is DecimalField -> "DECIMAL${this.bits}(${this.precision}, ${this.scale})"
-            is DecimalV2Field -> "DECIMAL(${this.precision}, ${this.scale})"
+            is DecimalV2Field -> "DECIMALV2(${this.precision}, ${this.scale})"
         }
     }
 

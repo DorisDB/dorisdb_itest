@@ -10,7 +10,6 @@ import org.springframework.jdbc.support.JdbcUtils
 import java.sql.DriverManager
 import java.sql.Statement
 import java.util.concurrent.TimeUnit
-import javax.sql.DataSource
 
 object MySQLUtil {
     fun getDataSource(driver: Driver, cxnString: String): SimpleDriverDataSource {

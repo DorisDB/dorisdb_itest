@@ -2,7 +2,7 @@ package com.grakra.itest
 
 import com.google.common.base.Preconditions
 import com.grakra.TestMethodCapture
-import com.grakra.dorisdb.MySQLClient
+import com.grakra.util.MySQLClient
 import com.grakra.schema.OrcUtil
 import com.grakra.schema.ParquetUtil
 import com.grakra.schema.SqlUtil
@@ -10,7 +10,6 @@ import com.grakra.schema.Table
 import com.grakra.util.Util
 import org.testng.Assert
 import org.testng.annotations.Listeners
-import java.io.File
 import java.util.concurrent.TimeUnit
 
 

@@ -13,6 +13,4 @@ class TestSchema {
                 4096)
         //OrcUtil.readOrcFile("file0.orc")
     }
-
-
 }

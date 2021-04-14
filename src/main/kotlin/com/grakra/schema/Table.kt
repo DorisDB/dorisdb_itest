@@ -1,7 +1,7 @@
 package com.grakra.schema
 
 import com.google.common.base.Preconditions
-import com.grakra.dorisdb.HiveClient
+import com.grakra.util.HiveClient
 import com.grakra.util.Util
 
 enum class TableType {

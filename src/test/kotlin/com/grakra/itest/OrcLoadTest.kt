@@ -18,7 +18,7 @@ class OrcLoadTest : DorisDBRemoteITest() {
         val table = Table("orc_table0",
                 listOf(
                         SimpleField.fixedLength("col_int", FixedLengthType.TYPE_INT),
-                        SimpleField.decimalv2("col_decimalv2p20s2", 20,2)
+                        SimpleField.decimalv2("col_decimalv2p20s2", 20, 2)
                 ), 1)
 
         val table1= Table("orc_table0",

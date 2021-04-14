@@ -4,7 +4,6 @@ import com.grakra.TestMethodCapture
 import com.grakra.util.Util
 import org.testng.annotations.Listeners
 import org.testng.annotations.Test
-import java.io.File
 
 @Listeners(TestMethodCapture::class)
 class DorisTestFailTest : DorisDBRemoteITest() {

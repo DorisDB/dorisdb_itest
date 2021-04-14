@@ -1,7 +1,7 @@
 package com.grakra.itest
 
 import com.grakra.TestMethodCapture
-import com.grakra.dorisdb.HiveClient
+import com.grakra.util.HiveClient
 import com.grakra.schema.CompoundField
 import com.grakra.schema.FixedLengthType
 import com.grakra.schema.SimpleField

@@ -1,10 +1,9 @@
-package com.grakra.dorisdb
+package com.grakra
 
 import com.grakra.util.Result
 import com.grakra.util.Util
 import org.testng.Assert
 import java.io.*
-import kotlin.concurrent.thread
 
 abstract class AbstractProcess {
   abstract val cmd: String

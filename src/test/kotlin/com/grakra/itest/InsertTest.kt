@@ -3,12 +3,11 @@ package com.grakra.itest
 import com.grakra.TestMethodCapture
 import com.grakra.schema.*
 import com.grakra.util.Util
+import com.grakra.schema.*
 import org.testng.Assert
 import org.testng.annotations.Listeners
 import org.testng.annotations.Test
 import java.io.File
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.locks.LockSupport
 
 @Listeners(TestMethodCapture::class)
 class InsertTest : DorisDBRemoteITest() {
@@ -228,15 +227,33 @@ class InsertTest : DorisDBRemoteITest() {
         create_table(db, table)
         val bytes = "2021-03-31 0元课 昨日 英语 143-2020/12/07 total_count 四线城市 邀请有奖 total_count 2-3岁 total_count total_count 11.27 100.0 30.99 34.09 10.56 106.67 142 142 44 15 16 69.98 0.0 47.01 -14.77 35.76 25.27 -14.46 -14.46 25.71 7.14 45.45 147 4.64 0.0 9.91 -5.909999999999997 28.10000000000001 -24 -24 9 1 5 2.130000000000001\n".toByteArray()
         val status = StreamLoad.streamLoad(
-                "39.103.134.93", 8333, db,table.tableName, ",", bytes)
+                "39.103.134.93", 8333, db, table.tableName, ",", bytes)
         Assert.assertTrue(status)
     }
 
     @Test
-    fun enable_disable_new_planer(){
+    fun enable_disable_new_planer() {
         admin_set_frontend_config("enable_new_planner", false)
         admin_show_frontend_config("enable_new_planner")
         execute(db, "set enable_new_planner = false")
         query_print(db, "show variables")
+    }
+
+    @Test
+    fun test_decimal_round() {
+        val table = Table("test_round", listOf(
+                SimpleField.fixedLength("seq", FixedLengthType.TYPE_INT),
+                SimpleField.decimalv2("col_decimal", 27, 9))
+                , 1)
+        create_db(db)
+        create_table(db, table)
+        val insertSql = table.insertIntoValuesSql(
+                listOf(
+                        listOf("1", "3.1415"),
+                        listOf("2", "3.1455"))
+        )
+        execute(db, insertSql)
+        query_print(db, table.selectAll())
+        query_print(db, "select seq, cast(col_decimal as decimalv2(27,2)) as result from test_round")
     }
 }

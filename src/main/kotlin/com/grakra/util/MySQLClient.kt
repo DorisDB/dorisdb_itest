@@ -1,7 +1,4 @@
-package com.grakra.dorisdb
-
-import com.grakra.util.MySQLUtil
-import com.grakra.util.thread_local
+package com.grakra.util
 
 class MySQLClient(private val hostPort: String) {
     private var db2client: MutableMap<String, MySQLUtil.Sql>? by thread_local()

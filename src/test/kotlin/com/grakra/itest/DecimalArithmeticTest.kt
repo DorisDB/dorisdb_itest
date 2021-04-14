@@ -5,10 +5,10 @@ import com.grakra.DecimalType
 import com.grakra.TestMethodCapture
 import com.grakra.schema.*
 import com.grakra.util.Util
+import com.grakra.schema.*
 import org.junit.Assert
 import org.testng.annotations.*
 import java.io.File
-import java.io.InputStream
 import java.io.PrintStream
 import java.math.BigDecimal
 import java.math.BigInteger

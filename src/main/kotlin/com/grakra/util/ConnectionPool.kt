@@ -2,7 +2,6 @@ package com.grakra.util
 
 import java.sql.Connection
 import java.util.concurrent.ArrayBlockingQueue
-import com.grakra.util.Result
 import java.util.concurrent.atomic.AtomicInteger
 
 class ConnectionPool<T : Connection>(

@@ -1,7 +1,6 @@
 package com.grakra.itest
 
 import com.google.gson.Gson
-import junit.framework.Assert
 import org.apache.http.client.methods.HttpPut
 import org.apache.http.client.utils.URIBuilder
 import org.apache.http.entity.ByteArrayEntity

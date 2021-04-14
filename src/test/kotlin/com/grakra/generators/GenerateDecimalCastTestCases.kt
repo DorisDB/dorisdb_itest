@@ -6,6 +6,7 @@ import com.grakra.schema.*
 import com.grakra.util.DecimalUtil
 import com.grakra.util.RandUtil
 import com.grakra.util.Util
+import com.grakra.schema.*
 import org.testng.Assert
 import org.testng.annotations.Test
 import java.io.File
@@ -300,7 +301,7 @@ class GenerateDecimalCastTestCases {
         return sdfNoMs.format(ts)
     }
 
-    fun anyToString(value:Any, field:SimpleField):String{
+    fun anyToString(value:Any, field: SimpleField):String{
         return when(field){
             is FixedLengthField -> when(field.type){
                 FixedLengthType.TYPE_DATETIME -> timestampToStringWithoutMs(value as Timestamp)

@@ -1,9 +1,10 @@
 package com.grakra.itest
 
 import com.grakra.TestMethodCapture
-import com.grakra.dorisdb.HiveClient
+import com.grakra.util.HiveClient
 import com.grakra.schema.*
 import com.grakra.util.Util
+import com.grakra.schema.*
 import org.testng.Assert
 import org.testng.annotations.Listeners
 import org.testng.annotations.Test

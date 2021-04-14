@@ -1,7 +1,6 @@
 package com.grakra.itest
 
 import com.grakra.TestMethodCapture
-import com.grakra.dorisdb.DorisDBCluster
 import org.testng.annotations.Listeners
 import org.testng.annotations.Test
 

@@ -1,7 +1,6 @@
 package com.grakra.util
 
 import org.testng.annotations.Test
-import java.nio.charset.Charset
 
 class TestRandUtil {
     @Test

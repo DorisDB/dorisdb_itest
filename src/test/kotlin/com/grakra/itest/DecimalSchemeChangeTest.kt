@@ -1,7 +1,6 @@
 package com.grakra.itest
 
 import com.grakra.TestMethodCapture
-import com.grakra.schema.*
 import com.grakra.util.RandUtil
 import com.grakra.util.Util
 import org.testng.Assert
@@ -9,6 +8,10 @@ import org.testng.annotations.AfterClass
 import org.testng.annotations.BeforeClass
 import org.testng.annotations.Listeners
 import org.testng.annotations.Test
+import com.grakra.schema.Field
+import com.grakra.schema.FixedLengthType
+import com.grakra.schema.SimpleField
+import com.grakra.schema.Table
 import java.io.File
 import java.io.PrintStream
 

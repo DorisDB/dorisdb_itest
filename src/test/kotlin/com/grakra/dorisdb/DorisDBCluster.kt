@@ -451,7 +451,7 @@ class DorisDBCluster(private val dorisDockerDir: String, val shellCmdDir: String
         val sucessBatch = AtomicInteger(0)
         val thd = thread {
             val promises = mutableListOf<Promise<Boolean?>>()
-            while (!killThread.acquire) {
+            while (!killThread.get()) {
                 totalBatch.incrementAndGet()
                 houseKeeper.async {
                     streamLoad(
@@ -477,7 +477,7 @@ class DorisDBCluster(private val dorisDockerDir: String, val shellCmdDir: String
                 }
 
                 if (promises.size == batches) {
-                    println("streamLoad for the ${totalBatch.getAcquire()} time")
+                    println("streamLoad for the ${totalBatch.get()} time")
                     promises.forEach {
                         it.get()
                     }
@@ -485,7 +485,7 @@ class DorisDBCluster(private val dorisDockerDir: String, val shellCmdDir: String
                 }
                 LockSupport.parkNanos(TimeUnit.SECONDS.toNanos(1))
             }
-            println("streamLoad for the ${totalBatch.getAcquire()} time")
+            println("streamLoad for the ${totalBatch.get()} time")
             if (promises.isNotEmpty()) {
                 promises.forEach { it.get() }
                 promises.clear()
@@ -493,10 +493,10 @@ class DorisDBCluster(private val dorisDockerDir: String, val shellCmdDir: String
         }
 
         return {
-            killThread.setRelease(true)
+            killThread.set(true)
             thd.join()
             houseKeeper.shutdown()
-            totalBatch.getAcquire() == sucessBatch.getAcquire() + failBatch.getAcquire()
+            totalBatch.get() == sucessBatch.get() + failBatch.get()
         }
     }
 

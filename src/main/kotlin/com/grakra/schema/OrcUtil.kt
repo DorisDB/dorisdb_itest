@@ -120,7 +120,7 @@ object OrcUtil {
 
     fun getDefaultKeyGeneratorsForOrc(fields: List<Field>, vararg customizedGenerators: Pair<String, () -> Any>): Map<String, () -> Any> {
         val generators = getDefaultValueGeneratorsForOrc(fields)
-        val customizedGeneratorsMap= customizedGenerators.toMap()
+        val customizedGeneratorsMap = customizedGenerators.toMap()
         return generators.map { (key, gen) ->
             if (customizedGeneratorsMap.containsKey(key)) {
                 key to customizedGeneratorsMap.getValue(key)
@@ -168,7 +168,7 @@ object OrcUtil {
 
                 TYPE_FLOAT ->
                     return {
-                        (cv as DoubleColumnVector).vector[idx()] = (generator() as Float).toDouble()
+                        (cv as DoubleColumnVector).vector[idx()] = (generator() as Double).toDouble()
                     }
 
                 TYPE_DOUBLE ->
@@ -401,6 +401,10 @@ object OrcUtil {
         orcToCVSOutputStream(orcPath, System.out, *fields)
     }
 
+    fun orcToCVS(orcPath: String, startRow: Int, numRows: Int, vararg fields: String) {
+        orcToCVSOutputStream(orcPath, System.out, startRow, numRows, *fields)
+    }
+
     fun orcToList(orcPath: String, vararg fields: String): List<List<String>> {
         val conf = Configuration()
         val dfsPath = org.apache.hadoop.fs.Path(orcPath)
@@ -439,6 +443,10 @@ object OrcUtil {
     }
 
     fun orcToCVSOutputStream(orcPath: String, csvOut: PrintStream, vararg fields: String) {
+        orcToCVSOutputStream(orcPath, csvOut, 0, Int.MAX_VALUE, *fields)
+    }
+
+    fun orcToCVSOutputStream(orcPath: String, csvOut: PrintStream, startRow: Int, numRows: Int, vararg fields: String) {
         val conf = Configuration()
         val dfsPath = org.apache.hadoop.fs.Path(orcPath)
         val reader = OrcFile.createReader(dfsPath, OrcFile.ReaderOptions(conf))
@@ -451,23 +459,42 @@ object OrcUtil {
             fields.toSet()
         }
         val fieldIndices = (0 until allFields.size).filter { i -> fieldFilter.contains(allFields[i]) }
+        println(fieldIndices.joinToString(",") { allFields[it] })
         val columnFormatterGenerators = Array(reader.schema.fieldNames.size) {
             { vector: ColumnVector, desc: TypeDescription -> nthItemOfColumnWithNullCheck(vector, desc) }
         }
         val columnFormatters = Array(reader.schema.fieldNames.size) {
             { _: Int -> "" }
         }
-        val rows = reader.rows()
-        while (rows.nextBatch(rowBatch)) {
+
+        val processRowBatch: (VectorizedRowBatch, Int, Int) -> Unit = { rowBatch, startIdx, num ->
             for (c: Int in fieldIndices) {
                 columnFormatters[c] = columnFormatterGenerators[c](rowBatch.cols[c], reader.schema.findSubtype(c + 1))
             }
-            for (i: Int in 0 until rowBatch.size) {
+            for (i: Int in startIdx until startIdx + num) {
                 csvOut.print("${columnFormatters[fieldIndices.first()](i.toInt())}")
                 for (c: Int in fieldIndices.drop(1)) {
                     csvOut.print(",${columnFormatters[c](i.toInt())}")
                 }
                 csvOut.println()
+            }
+        }
+
+        val rows = reader.rows()
+        var currentRows = 0
+        var remaining = numRows
+        while (rows.nextBatch(rowBatch)) {
+            if (currentRows > startRow + numRows) {
+                break
+            }
+            currentRows += rowBatch.size
+            if (startRow < currentRows) {
+                val startIdxInRowBatch = startRow + (currentRows - rowBatch.size)
+                val processLimit = Math.min(rowBatch.size - startIdxInRowBatch, remaining)
+                remaining -= processLimit
+                processRowBatch(rowBatch, startIdxInRowBatch, processLimit)
+            } else {
+                continue
             }
         }
         rows.close()

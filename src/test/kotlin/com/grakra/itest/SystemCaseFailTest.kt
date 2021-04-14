@@ -35,7 +35,7 @@ class SystemCaseFailTest : DorisDBRemoteITest() {
     @Test
     fun TestAlterTableAddDecimalToPrefixIndex(){
         val db = "alter_table_test_db_1613639289"
-        val data = File("./basic_types_data").inputStream().readAllBytes()
+        val data = File("./basic_types_data").inputStream().readBytes()
         run_mysql {c->
             c.q{sql->
                 sql.e("""

@@ -196,7 +196,7 @@ class FeCrashITest : KotlinITest() {
       val thd = thread {
 
         val promises = mutableListOf<Promise<Boolean?>>()
-        while (!killThread.acquire && totalBatch.getAcquire() < 10) {
+        while (totalBatch.get() < 10) {
           totalBatch.incrementAndGet()
           houseKeeper.async {
             cluster.streamLoad(
@@ -214,7 +214,7 @@ class FeCrashITest : KotlinITest() {
           }
 
           if (promises.size == 1) {
-            println("streamLoad for the ${totalBatch.getAcquire()} time")
+            println("streamLoad for the ${totalBatch.get()} time")
             promises.forEach {
               it.get()
             }
@@ -222,7 +222,7 @@ class FeCrashITest : KotlinITest() {
           }
           LockSupport.parkNanos(TimeUnit.SECONDS.toNanos(1))
         }
-        println("streamLoad for the ${totalBatch.getAcquire()} time")
+        println("streamLoad for the ${totalBatch.get()} time")
         if (promises.isNotEmpty()) {
           promises.forEach { it.get() }
         }
@@ -254,13 +254,13 @@ class FeCrashITest : KotlinITest() {
       }
       Assert.assertTrue(repairSuccess2)
       println("kill thread")
-      killThread.setRelease(true)
+      killThread.set(true)
       println("wait thread")
       thd.join()
       println("wait houseKeeper shutdown")
       houseKeeper.shutdown()
-      println("totalBatch=${totalBatch.getAcquire()}, successBatch=${sucessBatch.getAcquire()}, failBatch=${totalBatch.getAcquire()}")
-      Assert.assertEquals(totalBatch.getAcquire(), sucessBatch.getAcquire() + failBatch.getAcquire())
+      println("totalBatch=${totalBatch.get()}, successBatch=${sucessBatch.get()}, failBatch=${totalBatch.get()}")
+      Assert.assertEquals(totalBatch.get(), sucessBatch.get() + failBatch.get())
     }
   }
 

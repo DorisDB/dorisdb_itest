@@ -37,6 +37,13 @@ object RandUtil {
         }
     }
 
+    fun generateRandomDecimalBinary(precision:Int, scale:Int):()->ByteArray {
+        val decimalGen = generateRandomDecimal(precision, scale, 50)
+        return {
+            decimalGen().toPlainString().toByteArray()
+        }
+    }
+
     fun generateRandomBoolean(falseRatio: Int): () -> Boolean {
 
         val r = generateRandomInt(falseRatio)

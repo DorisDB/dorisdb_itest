@@ -1,19 +1,22 @@
 package com.grakra.tools
 
-import com.grakra.schema.FixedLengthType
-import com.grakra.schema.OrcUtil
-import com.grakra.schema.SimpleField
-import com.grakra.schema.Table
+import com.grakra.schema.*
+import com.grakra.util.RandUtil
+import com.grakra.util.Util
 import kotlin.system.exitProcess
 
 fun main(vararg args: String) {
-    if (args.size < 3) {
-        println("missing <numRows>")
+    if (args.size < 5) {
+        println("Format: DecimalPerfTestDataGenerator <file-prefix> <num-files> <num-rows-per-file> <nullable> <null-ratio>")
         exitProcess(1)
     }
+
     val filePrefix = args[0]
     val numFiles = args[1].toInt()
     val numRowsPerFile = args[2].toInt()
+    val nullable = args[3] == "nullable"
+    val nullRatio = args[4].toInt()
+
     val table = Table("decimal_test_table", listOf(
             SimpleField.fixedLength("id", FixedLengthType.TYPE_BIGINT),
             SimpleField.decimal("col0_i32p7s2", 32, 7, 2),
@@ -42,10 +45,22 @@ fun main(vararg args: String) {
             1
     )
 
-    (1..numFiles).forEach { n->
+    val tableNew = if (nullable) {
+        Table(table.tableName, table.keyFields() + table.valueFields(emptySet()).map {
+            CompoundField.nullable(it.simple(), nullRatio)
+        }, table.keyLimit)
+    } else {
+        table
+    }
+    val idGen = Util.generateLongCounter()
+    val decimalP7S2Gen = RandUtil.generateRandomDecimalBinary(7, 2)
+    val decimalP15S6Gen = RandUtil.generateRandomDecimalBinary(15, 6)
+
+    (1..numFiles).forEach { n ->
         val suffix = "0000$n".takeLast(4)
         val fileName = "${filePrefix}_${suffix}.orc"
-        OrcUtil.createOrcFile(fileName, table.keyFields(), table.valueFields(emptySet()), numRowsPerFile,65536);
+        OrcUtil.createOrcFile(fileName, tableNew.keyFields(), tableNew.valueFields(emptySet()), numRowsPerFile, 65536,
+                "id" to idGen, "col_varchar" to decimalP7S2Gen, "col_char" to decimalP15S6Gen)
     }
     //OrcUtil.createOrcFile()
 }

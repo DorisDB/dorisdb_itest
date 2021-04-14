@@ -6,5 +6,5 @@ INTO TABLE `<table>`
 FORMAT AS "<format>"
 (<columnList:{col|<col>}; separator=", ">)
 )
-WITH BROKER hdfs ("username"="root", "password"="");
+WITH BROKER hdfs_broker ("username"="root", "password"="");
 >>

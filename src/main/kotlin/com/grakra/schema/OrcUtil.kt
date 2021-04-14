@@ -168,7 +168,7 @@ object OrcUtil {
 
                 TYPE_FLOAT ->
                     return {
-                        (cv as DoubleColumnVector).vector[idx()] = (generator() as Double).toDouble()
+                        (cv as DoubleColumnVector).vector[idx()] = (generator() as Float).toDouble()
                     }
 
                 TYPE_DOUBLE ->
@@ -487,15 +487,21 @@ object OrcUtil {
             if (currentRows > startRow + numRows) {
                 break
             }
-            currentRows += rowBatch.size
-            if (startRow < currentRows) {
-                val startIdxInRowBatch = startRow + (currentRows - rowBatch.size)
-                val processLimit = Math.min(rowBatch.size - startIdxInRowBatch, remaining)
-                remaining -= processLimit
-                processRowBatch(rowBatch, startIdxInRowBatch, processLimit)
-            } else {
+
+            if (startRow >= currentRows + rowBatch.size) {
+                currentRows += rowBatch.size
                 continue
             }
+
+            val startIdxInRowBatch = if (currentRows <= startRow && startRow < currentRows + rowBatch.size) {
+                startRow - currentRows
+            } else {
+                0
+            }
+
+            val processLimit = Math.min(rowBatch.size - startIdxInRowBatch, remaining)
+            remaining -= processLimit
+            processRowBatch(rowBatch, startIdxInRowBatch, processLimit)
         }
         rows.close()
     }

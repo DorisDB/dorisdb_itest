@@ -63,6 +63,7 @@ open class DorisDBRemoteITest : KotlinITest() {
             val tableSql = table.sql()
             c.q(db) { sql ->
                 sql.e("set enable_decimal_v3 = true")
+                sql.e("drop table if exists ${table.tableName}")
                 sql.e(tableSql)
                 sql.q("desc ${table.tableName}")
             }

@@ -1,5 +1,6 @@
 package com.grakra.itest
 
+import com.google.common.base.Preconditions
 import com.google.common.base.Strings
 import com.grakra.DecimalType
 import com.grakra.TestMethodCapture
@@ -12,6 +13,7 @@ import java.io.File
 import java.io.PrintStream
 import java.math.BigDecimal
 import java.math.BigInteger
+import kotlin.math.abs
 
 @Listeners(TestMethodCapture::class)
 class DecimalArithmeticTest : DorisDBRemoteITest() {
@@ -20,7 +22,7 @@ class DecimalArithmeticTest : DorisDBRemoteITest() {
         Util.createOrcFile("foobar.orc")
     }
 
-    @Test
+    //@Test
     fun testReadOrcFile() {
         Util.readOrcFile("foobar.orc")
     }
@@ -37,6 +39,7 @@ class DecimalArithmeticTest : DorisDBRemoteITest() {
     fun add(a: BigDecimal, b: BigDecimal) = a.add(b)
     fun sub(a: BigDecimal, b: BigDecimal) = a.subtract(b)
     fun mul(a: BigDecimal, b: BigDecimal) = a.multiply(b)
+
     fun make_div(bits: Int): (BigDecimal, BigDecimal) -> BigDecimal {
         return { a, b ->
             val aIsInteger = a.remainder(BigDecimal.ONE).unscaledValue() == BigInteger.ZERO
@@ -88,6 +91,103 @@ class DecimalArithmeticTest : DorisDBRemoteITest() {
             }
         }
     }
+
+    //Snowflake div
+    fun getRealScale(a: BigDecimal) = 0.coerceAtLeast(a.scale())
+
+    fun getRealPrecision(a: BigDecimal): Int {
+        val scale = a.scale()
+        val precision = a.precision()
+        return if (scale < 0) {
+            abs(scale) + precision
+        } else {
+            scale.coerceAtLeast(precision)
+        }
+    }
+
+    fun max_precision(bits: Int): Int {
+        Preconditions.checkState(bits in setOf(32, 64, 128))
+        return when (bits) {
+            32 -> 9
+            64 -> 18
+            128 -> 38
+            else -> {
+                Preconditions.checkState(false)
+                0
+            }
+        }
+    }
+
+    fun compute_result_type(lhs: DecimalType, rhs: DecimalType, op: String): DecimalType {
+        Preconditions.checkState(lhs.bits == rhs.bits)
+        Preconditions.checkState(lhs.bits in setOf(32, 64, 128))
+        when (op) {
+            "AddOp", "SubOp", "ModOp" -> {
+                val resultScale = lhs.scale.coerceAtLeast(rhs.scale)
+                val resultPrecision = max_precision(lhs.bits)
+                return DecimalType(lhs.bits, resultPrecision, resultScale);
+            }
+            "MulOp" -> {
+                val resultScale = lhs.scale + rhs.scale;
+                val resultPrecision = max_precision(lhs.bits)
+                return DecimalType(lhs.bits, resultPrecision, resultScale)
+            }
+            "DivOp" -> {
+                val (resultScale, _) = compute_div_scale(lhs.scale, rhs.scale)
+                val resultPrecision = max_precision(128)
+                return DecimalType(128, resultPrecision, resultScale)
+            }
+            else -> {
+                throw InternalError("Never reach here")
+            }
+        }
+    }
+
+    fun compute_div_scale(lhsScale: Int, rhsScale: Int): Pair<Int, Int> {
+        val scale = when {
+            lhsScale <= 6 -> {
+                lhsScale + 6
+            }
+            lhsScale <= 12 -> {
+                12
+            }
+            else -> {
+                lhsScale
+            }
+        }
+        val adjustScale = scale + rhsScale - lhsScale
+        return scale to adjustScale
+    }
+
+    fun make_div(
+            lhsType: DecimalType,
+            rhsType: DecimalType): (BigDecimal, BigDecimal) -> BigDecimal {
+        val (scale, adjustScale) = compute_div_scale(lhsType.scale, rhsType.scale)
+        return { a, b ->
+
+            if (b.unscaledValue() == BigInteger.ZERO) {
+                a.setScale(scale)
+            } else {
+                a.setScale(scale) / b.setScale(rhsType.scale)
+            }
+        }
+    }
+
+    fun mod(a: BigDecimal, b: BigDecimal): BigDecimal {
+        val scaleA = getRealScale(a)
+        val scaleB = getRealScale(b)
+        val adjustedScale = scaleA.coerceAtLeast(scaleB)
+        val intA = a.scaleByPowerOfTen(scaleA).toBigIntegerExact()
+        val intB = b.scaleByPowerOfTen(scaleB).toBigIntegerExact()
+        val adjustIntA = intA.multiply(BigInteger.TEN.pow(adjustedScale - scaleA))
+        val adjustIntB = intB.multiply(BigInteger.TEN.pow(adjustedScale - scaleB))
+        return if (b.unscaledValue() == BigInteger.ZERO) {
+            BigDecimal.ZERO
+        } else {
+            BigDecimal(adjustIntA % adjustIntB, adjustedScale)
+        }
+    }
+
 
     fun decimal_pair2triple(
             pair_array: Array<Array<BigDecimal>>,
@@ -236,7 +336,16 @@ class DecimalArithmeticTest : DorisDBRemoteITest() {
         println(content)
     }
 
-    fun generateFullTestCase1(opName: String, lhsType: DecimalType, rhsType: DecimalType, resultType: DecimalType) {
+    val generateDaily = true
+    fun generateFullTestCase(opName: String, lhsType: DecimalType, rhsType: DecimalType, resultType: DecimalType) {
+        if (generateDaily) {
+            generateFullTestCaseDaily(opName, lhsType, rhsType)
+        } else {
+            generateFullTestCaseUT(opName, lhsType, rhsType)
+        }
+    }
+
+    fun generateFullTestCaseUT(opName: String, lhsType: DecimalType, rhsType: DecimalType) {
         val randInputs = gen_decimal_pair(
                 20,
                 Util.generateRandomDecimal128(lhsType.precision, lhsType.scale, 50),
@@ -251,6 +360,7 @@ class DecimalArithmeticTest : DorisDBRemoteITest() {
             }
         }.toTypedArray()
 
+        val resultType = compute_result_type(lhsType, rhsType, opName)
         val primitiveType = "TYPE_DECIMAL${resultType.bits}"
         Assert.assertTrue(primitiveType in setOf("TYPE_DECIMAL32", "TYPE_DECIMAL64", "TYPE_DECIMAL128"))
         Assert.assertTrue(opName in setOf("AddOp", "SubOp", "MulOp", "DivOp", "ModOp"))
@@ -263,19 +373,21 @@ class DecimalArithmeticTest : DorisDBRemoteITest() {
             "AddOp" -> ::add
             "SubOp" -> ::sub
             "MulOp" -> ::mul
-            "DivOp" -> make_div(resultType.bits)
-            "ModOp" -> make_mod(resultType.bits)
+            "DivOp" -> make_div(lhsType, rhsType)
+            "ModOp" -> ::mod
             else -> ::invalid_op
         }
 
+        val table = create_table_from_decimal_pair(opName, lhsType, rhsType)
         val testCases = decimal_triple2string(
                 decimal_pair2triple(specialInputs.plus(randInputs), op, overflow_policy(resultType.bits, resultType.precision, OverflowPolicy.BINARY_BOUND_QUIET)))
         val content = Util.renderTemplate("decimal_testcase_full.template",
+                "name" to table.tableName,
                 "test_cases" to testCases,
                 "primitive_type" to primitiveType,
                 "binary_op" to opName,
                 "precisions_and_scales" to precisionsAndScales)
-        println(content)
+        genCode!!.println(content)
     }
 
     val createSqlPrefix = "arithmetic_operations/sql"
@@ -296,7 +408,7 @@ class DecimalArithmeticTest : DorisDBRemoteITest() {
         genCode!!.close()
     }
 
-    fun generateFullTestCase(opName: String, lhsType: DecimalType, rhsType: DecimalType, resultType: DecimalType) {
+    fun generateFullTestCaseDaily(opName: String, lhsType: DecimalType, rhsType: DecimalType) {
         val randInputs = gen_decimal_pair(
                 20,
                 Util.generateRandomDecimal128(lhsType.precision, lhsType.scale, 50),
@@ -311,6 +423,7 @@ class DecimalArithmeticTest : DorisDBRemoteITest() {
             }
         }.toTypedArray()
 
+        val resultType = compute_result_type(lhsType, rhsType, opName)
         val primitiveType = "TYPE_DECIMAL${resultType.bits}"
         Assert.assertTrue(primitiveType in setOf("TYPE_DECIMAL32", "TYPE_DECIMAL64", "TYPE_DECIMAL128"))
         Assert.assertTrue(opName in setOf("AddOp", "SubOp", "MulOp", "DivOp", "ModOp"))
@@ -323,8 +436,8 @@ class DecimalArithmeticTest : DorisDBRemoteITest() {
             "AddOp" -> ::add
             "SubOp" -> ::sub
             "MulOp" -> ::mul
-            "DivOp" -> make_div(resultType.bits)
-            "ModOp" -> make_mod(resultType.bits)
+            "DivOp" -> make_div(lhsType, rhsType)
+            "ModOp" -> ::mod
             else -> ::invalid_op
         }
         val operator = when (opName) {
@@ -344,7 +457,7 @@ class DecimalArithmeticTest : DorisDBRemoteITest() {
                     triple.all { e -> e != null }
                 }.toTypedArray())
 
-        val table = create_table_from_decimal_triple(opName, lhsType, rhsType, resultType)
+        val table = create_table_from_decimal_pair(opName, lhsType, rhsType)
         val createSqlPath = "$createSqlPrefix/${table.tableName}.sql"
         val dataCsvPath = "$dataCsvPrefix/${table.tableName}.csv"
 
@@ -383,7 +496,8 @@ class DecimalArithmeticTest : DorisDBRemoteITest() {
         return SimpleField.decimal(name, dt.bits, dt.precision, dt.scale)
     }
 
-    fun create_table_from_decimal_triple(op: String, lhs: DecimalType, rhs: DecimalType, result: DecimalType): Table {
+    fun create_table_from_decimal_pair(op: String, lhs: DecimalType, rhs: DecimalType): Table {
+        val result = compute_result_type(lhs, rhs, op)
         val seq = SimpleField.fixedLength("seq", FixedLengthType.TYPE_INT)
         val lhsField = decimal_type_to_decimal_field("lhs", lhs)
         val rhsField = decimal_type_to_decimal_field("rhs", rhs)
@@ -731,5 +845,33 @@ class DecimalArithmeticTest : DorisDBRemoteITest() {
                 DecimalType(128, 37, 10),
                 DecimalType(128, 19, 0),
                 DecimalType(128, 38, 0))
+    }
+
+    @Test
+    fun testSnowflakeStyleDiv() {
+        (0..15).forEach { lhsScale ->
+            val lhsType = DecimalType(128, 38, lhsScale)
+            val rhsType = DecimalType(128, 38, 0)
+            val (scale, adjustedScale) = compute_div_scale(lhsType.scale, rhsType.scale)
+            val div = make_div(lhsType, rhsType)
+            val result = div(BigDecimal("2.0"), BigDecimal("3"))
+            println(result)
+            Assert.assertEquals(result.toPlainString().substring(2).length, scale)
+        }
+
+        (4..13).forEach { lhsScale ->
+            val lhsType = DecimalType(128, 38, lhsScale)
+            val rhsType = DecimalType(128, 8, 7)
+            val (scale, adjustedScale) = compute_div_scale(lhsType.scale, rhsType.scale)
+            val div = make_div(lhsType, rhsType)
+            val result = div(BigDecimal("2.1237"), BigDecimal("3.1415926"))
+            println(result)
+            Assert.assertEquals(result.toPlainString().substring(2).length, scale)
+        }
+
+        //println(mod(BigDecimal("2.00"), BigDecimal("0.03")))
+        //println(mod(BigDecimal("100"), BigDecimal("3.1315926")))
+        //println(mod(BigDecimal("100.00000000"), BigDecimal("3.1315926")))
+        //println(mod(BigDecimal("100.000000000"), BigDecimal("3.1315926")))
     }
 }

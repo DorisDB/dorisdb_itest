@@ -5,6 +5,7 @@ import com.grakra.tables.Tables
 import com.grakra.util.HouseKeeper
 import com.grakra.util.RandUtil
 import com.grakra.util.Util
+import java.util.*
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.LockSupport
@@ -24,8 +25,19 @@ fun main(vararg args: String) {
     //val table = Tables.char_table
     val table = Tables.char_table
     val idGen = Util.generateLongCounter()
-    var char255Gen = RandUtil.generateVarchar(255,255)
-    var varchar65535Gen  = RandUtil.generateVarchar(65535, 65535)
+    var char255Gen = RandUtil.generateVarchar(255, 255)
+
+    val rand = Random()
+    var varchar65535Gen = RandUtil.generateVarchar(65535, 65535)
+    val varcharMax65535Gen = RandUtil.generateVarchar(0, 255)
+    val varcharTenth65535Gen: () -> ByteArray = {
+        if (rand.nextInt(100) < 20) {
+            varchar65535Gen()
+        } else {
+            varcharMax65535Gen()
+        }
+    }
+
     val houseKeeper = HouseKeeper()
     val atomicInt = AtomicInteger(0)
     (1..numFiles).forEach { n ->
@@ -45,8 +57,8 @@ fun main(vararg args: String) {
                     "id" to idGen,
                     "col_char255" to char255Gen,
                     "col_nullable_char255" to char255Gen,
-                    "col_varchar65535" to varchar65535Gen,
-                    "col_nullable_varchar65535" to varchar65535Gen)
+                    "col_varchar65535" to varcharTenth65535Gen,
+                    "col_nullable_varchar65535" to varcharTenth65535Gen)
         }.addListener {
             atomicInt.decrementAndGet()
         }

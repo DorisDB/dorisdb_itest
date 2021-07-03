@@ -52,6 +52,7 @@ object RandUtil {
         }
     }
 
+
     fun getFiniteSetGenerator(n: Int, generator: () -> Any): () -> Any {
         val finiteSet = mutableSetOf<Any>()
         val rand = Random()

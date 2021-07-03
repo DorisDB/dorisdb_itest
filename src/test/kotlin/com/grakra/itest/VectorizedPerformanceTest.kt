@@ -1,5 +1,6 @@
 package com.grakra.itest
 
+import com.google.common.base.Strings
 import com.grakra.TestMethodCapture
 import com.grakra.util.HiveClient
 import com.grakra.schema.CompoundField
@@ -10,6 +11,7 @@ import com.grakra.util.Util
 import org.testng.Assert
 import org.testng.annotations.Listeners
 import org.testng.annotations.Test
+import java.math.BigInteger
 
 @Listeners(TestMethodCapture::class)
 class VectorizedPerformanceTest : DorisDBRemoteITest() {
@@ -340,13 +342,20 @@ class VectorizedPerformanceTest : DorisDBRemoteITest() {
         Util.measureCost("VECTORIZED") {
             broker_load(store_sales_table_vectorized.brokerLoadSql(db, "parquet", hdfsPath))
         }
-        admin_set_vectorized_load_enable(false)
-        Util.measureCost("NON-VECTORIZED") {
-            broker_load(store_sales_table.brokerLoadSql(db, "parquet", hdfsPath))
-        }
+        //admin_set_vectorized_load_enable(false)
+        //Util.measureCost("NON-VECTORIZED") {
+        //    broker_load(store_sales_table.brokerLoadSql(db, "parquet", hdfsPath))
+        //}
         val fpVectorized = fingerprint_murmur_hash3_32(db, "select * from ${store_sales_table_vectorized.tableName}")
-        val fpNonVectorized = fingerprint_murmur_hash3_32(db, "select * from ${store_sales_table.tableName}")
-        println("fpVectorized=$fpNonVectorized, fpNonVectorized=$fpNonVectorized")
-        Assert.assertEquals(fpVectorized, fpNonVectorized)
+        println("fpVectorized=$fpVectorized\n")
+        //val fpNonVectorized = fingerprint_murmur_hash3_32(db, "select * from ${store_sales_table.tableName}")
+        //println("fpVectorized=$fpNonVectorized, fpNonVectorized=$fpNonVectorized")
+        //Assert.assertEquals(fpVectorized, fpNonVectorized)
+    }
+
+    @Test
+    fun f(){
+        val a = BigInteger("-132323")
+        println(a.mod(BigInteger(Strings.repeat("9",3))))
     }
 }

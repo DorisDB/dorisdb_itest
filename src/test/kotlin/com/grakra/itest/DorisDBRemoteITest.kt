@@ -7,6 +7,7 @@ import com.grakra.schema.OrcUtil
 import com.grakra.schema.ParquetUtil
 import com.grakra.schema.SqlUtil
 import com.grakra.schema.Table
+import com.grakra.util.MySQLUtil
 import com.grakra.util.Util
 import org.testng.Assert
 import org.testng.annotations.Listeners
@@ -39,6 +40,31 @@ open class DorisDBRemoteITest : KotlinITest() {
         }
     }
 
+    fun execute(stmt:String){
+        run_mysql { c->
+            c.q{sql->
+                sql.e(stmt)
+            }
+        }
+    }
+
+    fun <T> query(stmt: String, f: (Map<String,Any>)->T):List<T>? {
+        return run_mysql { c->
+            c.q{sql->
+                sql.q(stmt)?.map{f(it)}
+            }
+        }
+    }
+
+
+    fun show_databases():List<String> {
+        return query("show databases"){it["Database"] as String}!!
+    }
+
+    fun drop_database(db:String) {
+        execute(drop_db_sql(db))
+    }
+
     fun create_db_sql(db: String):String {
         return "drop database if exists $db;create database if not exists $db"
     }
@@ -62,7 +88,6 @@ open class DorisDBRemoteITest : KotlinITest() {
         run_mysql { c ->
             val tableSql = table.sql()
             c.q(db) { sql ->
-                sql.e("set enable_decimal_v3 = true")
                 sql.e("drop table if exists ${table.tableName}")
                 sql.e(tableSql)
                 sql.q("desc ${table.tableName}")
@@ -89,6 +114,7 @@ open class DorisDBRemoteITest : KotlinITest() {
         }
     }
 
+
     fun check_alter_table_finished(db: String, table: Table) {
         val sql = table.showAlterTableColumnSql()
         Util.timed(60, 1, TimeUnit.SECONDS) {
@@ -108,12 +134,20 @@ open class DorisDBRemoteITest : KotlinITest() {
         Assert.assertEquals(kvs.getValue(key), enable.toString())
     }
 
+    fun admin_set_enable_decimal_v3(enable: Boolean) {
+        val key = "enable_decimal_v3"
+        admin_set_frontend_config(key, enable)
+        val kvs = admin_show_frontend_config(key)
+        Assert.assertTrue(kvs.containsKey(key))
+        Assert.assertEquals(kvs.getValue(key), enable.toString())
+    }
+
     fun query(db: String, stmt: String): List<Map<String, Any>> {
         println("query:\n$stmt")
         var rs: List<Map<String, Any>>? = null
         run_mysql { c ->
             c.q(db) { sql ->
-                sql.e("set enable_decimal_v3 = true")
+                //sql.e("set enable_decimal_v3 = true")
                 rs = sql.q(stmt)
             }
         }
@@ -233,7 +267,6 @@ open class DorisDBRemoteITest : KotlinITest() {
         val checkLoadStateSql = "show load order by createtime desc limit 1"
         run_mysql { c ->
             c.q { sql ->
-                sql.e("set enable_decimal_v3 = true")
                 sql.e(loadSql)
                 loop@ while (true) {
                     val rs = sql.q(checkLoadStateSql)!!

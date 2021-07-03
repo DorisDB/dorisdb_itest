@@ -165,14 +165,14 @@ object Util {
     fun generateCounter(): () -> Int = generateCounter(Int.MAX_VALUE)
 
 
-    fun generateLongCounter(): ()-> Long = generateLongCounter(Long.MAX_VALUE)
+    fun generateLongCounter(): () -> Long = generateLongCounter(Long.MAX_VALUE)
 
     fun generateCounterRange(from: Int, till: Int): () -> Int {
         val counter = generateCounter(till - from)
         return { counter() + from }
     }
 
-    fun generateLongCounter(limit: Long): () -> Long{
+    fun generateLongCounter(limit: Long): () -> Long {
         var n = -1L
         return {
             n += 1L
@@ -640,6 +640,10 @@ object Util {
     fun renderTemplate(templateName: String, vararg parameters: Pair<String, Any?>): String {
         val template = String(this.javaClass.classLoader.getResourceAsStream(templateName).readBytes()!!, StandardCharsets.UTF_8)
         return renderTemplate(template, "main", parameters.toMap())
+    }
+
+    fun readContentFromResource(res: String): String {
+        return String(this.javaClass.classLoader.getResourceAsStream(res).readBytes()!!, StandardCharsets.UTF_8)
     }
 
     fun listResource(subdir: String, filter: (File) -> Boolean): List<File> {

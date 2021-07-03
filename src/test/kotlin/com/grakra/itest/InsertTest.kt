@@ -256,4 +256,9 @@ class InsertTest : DorisDBRemoteITest() {
         query_print(db, table.selectAll())
         query_print(db, "select seq, cast(col_decimal as decimalv2(27,2)) as result from test_round")
     }
+
+    @Test
+    fun enable_vectorized_load_test(){
+        admin_set_vectorized_load_enable(true)
+    }
 }

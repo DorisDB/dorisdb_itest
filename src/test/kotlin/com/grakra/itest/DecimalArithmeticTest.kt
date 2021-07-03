@@ -398,6 +398,8 @@ class DecimalArithmeticTest : DorisDBRemoteITest() {
 
     @BeforeClass
     fun setUp() {
+        Util.recreateDir(createSqlPrefix)
+        Util.recreateDir(dataCsvPrefix)
         genCode = PrintStream(File(genCodeFile).outputStream())
         create_db(db)
     }

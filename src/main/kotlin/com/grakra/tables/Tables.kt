@@ -1,5 +1,6 @@
 package com.grakra.tables
 
+import com.grakra.schema.CompoundField
 import com.grakra.schema.FixedLengthType
 import com.grakra.schema.SimpleField
 import com.grakra.schema.Table
@@ -100,5 +101,18 @@ object Tables {
             SimpleField.fixedLength("col_double", FixedLengthType.TYPE_DOUBLE),
             SimpleField.char("col_char", 50),
             SimpleField.fixedLength("col_int", FixedLengthType.TYPE_INT)),
+            1)
+
+    val char_table = Table("char_table", listOf(
+            SimpleField.fixedLength("id", FixedLengthType.TYPE_BIGINT),
+            SimpleField.char("col_char2550", 2550),
+            SimpleField.char("col_char255", 255),
+            SimpleField.varchar("col_varchar75535", 75535),
+            SimpleField.varchar("col_varchar255", 255),
+            CompoundField.nullable(SimpleField.char("col_nullable_char2550", 2550), 50),
+            CompoundField.nullable(SimpleField.char("col_nullable_char255", 255), 50),
+            CompoundField.nullable(SimpleField.varchar("col_nullable_varchar755350", 75535), 50),
+            CompoundField.nullable(SimpleField.varchar("col_nullable_varchar255", 255), 50)
+    ),
             1)
 }

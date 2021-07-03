@@ -11,31 +11,19 @@ import java.util.concurrent.locks.LockSupport
 import kotlin.system.exitProcess
 
 fun main(vararg args: String) {
-    if (args.size < 6) {
-        println("Format: DecimalPerfTestDataGenerator <file-prefix> <num-files> <num-rows-per-file> <nullable> <null-ratio> <parallelism>")
+    if (args.size < 4) {
+        println("Format: DecimalPerfTestDataGenerator <file-prefix> <num-files> <num-rows-per-file> <parallelism>")
         exitProcess(1)
     }
 
     val filePrefix = args[0]
     val numFiles = args[1].toInt()
     val numRowsPerFile = args[2].toInt()
-    val nullable = args[3] == "nullable"
-    val nullRatio = args[4].toInt()
-    val parallelism = args[5].toInt()
+    val parallelism = args[3].toInt()
 
     //val table = Tables.char_table
-    val table = Tables.decimal_perf_table
-
-    val tableNew = if (nullable) {
-        Table(table.tableName, table.keyFields() + table.valueFields(emptySet()).map {
-            CompoundField.nullable(it.simple(), nullRatio)
-        }, table.keyLimit)
-    } else {
-        table
-    }
+    val table = Tables.char_table
     val idGen = Util.generateLongCounter()
-    val decimalP7S2Gen = RandUtil.generateRandomDecimalBinary(7, 2)
-    val decimalP15S6Gen = RandUtil.generateRandomDecimalBinary(15, 6)
     val houseKeeper = HouseKeeper()
     val atomicInt = AtomicInteger(0)
     (1..numFiles).forEach { n ->
@@ -46,8 +34,7 @@ fun main(vararg args: String) {
         }
         atomicInt.incrementAndGet()
         houseKeeper.async {
-            OrcUtil.createOrcFile(fileName, tableNew.keyFields(), tableNew.valueFields(emptySet()), numRowsPerFile, 65536,
-                    "id" to idGen, "col_varchar" to decimalP7S2Gen, "col_char" to decimalP15S6Gen)
+            OrcUtil.createOrcFile(fileName, table.keyFields(), table.valueFields(emptySet()), numRowsPerFile, 4096, "id" to idGen)
         }.addListener {
             atomicInt.decrementAndGet()
         }

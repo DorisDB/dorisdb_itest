@@ -105,13 +105,13 @@ object Tables {
 
     val char_table = Table("char_table", listOf(
             SimpleField.fixedLength("id", FixedLengthType.TYPE_BIGINT),
-            SimpleField.char("col_char2550", 2550),
+            SimpleField.char("col_char254", 254),
             SimpleField.char("col_char255", 255),
-            SimpleField.varchar("col_varchar75535", 75535),
+            SimpleField.varchar("col_varchar65535", 65535),
             SimpleField.varchar("col_varchar255", 255),
-            CompoundField.nullable(SimpleField.char("col_nullable_char2550", 2550), 50),
+            CompoundField.nullable(SimpleField.char("col_nullable_char254", 254), 50),
             CompoundField.nullable(SimpleField.char("col_nullable_char255", 255), 50),
-            CompoundField.nullable(SimpleField.varchar("col_nullable_varchar755350", 75535), 50),
+            CompoundField.nullable(SimpleField.varchar("col_nullable_varchar65535", 65535), 50),
             CompoundField.nullable(SimpleField.varchar("col_nullable_varchar255", 255), 50)
     ),
             1)

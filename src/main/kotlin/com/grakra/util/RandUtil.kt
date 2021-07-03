@@ -111,6 +111,9 @@ object RandUtil {
             String(clob).toByteArray(Charsets.UTF_8)
         }
     }
+    fun generateVarchar(minLength:Int, maxLength:Int):()->ByteArray {
+        return generateRandomVarChar(lc()+ uc()+ digit(), minLength, maxLength)
+    }
 
     fun lc() = (0..25).map { ('a'.toInt() + it).toChar() }.toTypedArray()
     fun uc() = (0..25).map { ('A'.toInt() + it).toChar() }.toTypedArray()

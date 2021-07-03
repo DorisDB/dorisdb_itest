@@ -24,6 +24,8 @@ fun main(vararg args: String) {
     //val table = Tables.char_table
     val table = Tables.char_table
     val idGen = Util.generateLongCounter()
+    var char255Gen = RandUtil.generateVarchar(255,255)
+    var varchar65535Gen  = RandUtil.generateVarchar(65535, 65535)
     val houseKeeper = HouseKeeper()
     val atomicInt = AtomicInteger(0)
     (1..numFiles).forEach { n ->
@@ -34,7 +36,17 @@ fun main(vararg args: String) {
         }
         atomicInt.incrementAndGet()
         houseKeeper.async {
-            OrcUtil.createOrcFile(fileName, table.keyFields(), table.valueFields(emptySet()), numRowsPerFile, 4096, "id" to idGen)
+            OrcUtil.createOrcFile(
+                    fileName,
+                    table.keyFields(),
+                    table.valueFields(emptySet()),
+                    numRowsPerFile,
+                    4096,
+                    "id" to idGen,
+                    "col_char255" to char255Gen,
+                    "col_nullable_char255" to char255Gen,
+                    "col_varchar65535" to varchar65535Gen,
+                    "col_nullable_varchar65535" to varchar65535Gen)
         }.addListener {
             atomicInt.decrementAndGet()
         }

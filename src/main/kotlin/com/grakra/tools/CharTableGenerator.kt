@@ -58,7 +58,8 @@ fun main(vararg args: String) {
                     "col_char255" to char255Gen,
                     "col_nullable_char255" to char255Gen,
                     "col_varchar65535" to varcharTenth65535Gen,
-                    "col_nullable_varchar65535" to varcharTenth65535Gen)
+                    "col_nullable_varchar65535" to varcharTenth65535Gen
+            )
         }.addListener {
             atomicInt.decrementAndGet()
         }

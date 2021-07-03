@@ -106,7 +106,13 @@ object RandUtil {
     fun generateRandomVarChar(alphabeta: Array<Char>, minLength: Int, maxLength: Int): () -> ByteArray {
         val rand = Random()
         return {
-            val clob = CharArray(minLength + rand.nextInt(maxLength - minLength)) {
+            val delta = if (minLength == maxLength) {
+                0
+            } else {
+                rand.nextInt(maxLength - minLength)
+            }
+
+            val clob = CharArray(minLength + delta) {
                 alphabeta[rand.nextInt(alphabeta.size)]
             }
             String(clob).toByteArray(Charsets.UTF_8)

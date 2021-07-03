@@ -7,6 +7,7 @@ import com.grakra.schema.CompoundField
 import com.grakra.schema.FixedLengthType
 import com.grakra.schema.SimpleField
 import com.grakra.schema.Table
+import com.grakra.util.RandUtil
 import com.grakra.util.Util
 import org.testng.Assert
 import org.testng.annotations.Listeners
@@ -355,7 +356,8 @@ class VectorizedPerformanceTest : DorisDBRemoteITest() {
 
     @Test
     fun f(){
-        val a = BigInteger("-132323")
-        println(a.mod(BigInteger(Strings.repeat("9",3))))
+        val a = RandUtil.generateVarchar(255,255)
+        (1..10).forEach{println(String(a()))}
     }
+
 }

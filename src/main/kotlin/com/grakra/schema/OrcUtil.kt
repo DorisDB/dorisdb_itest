@@ -34,7 +34,7 @@ object OrcUtil {
                     TYPE_DATETIME -> TypeDescription.createTimestamp()
                 }
                 is CharField -> TypeDescription.createChar().withMaxLength(f.len)
-                is VarCharField -> TypeDescription.createString().withMaxLength(f.len)
+                is VarCharField -> TypeDescription.createString()
                 is DecimalField -> TypeDescription.createDecimal().withScale(f.scale).withPrecision(f.precision)
                 is DecimalV2Field -> TypeDescription.createDecimal().withScale(f.scale).withPrecision(f.precision)
             }

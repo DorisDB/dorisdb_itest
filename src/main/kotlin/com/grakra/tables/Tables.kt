@@ -111,12 +111,34 @@ object Tables {
             CompoundField.nullable(SimpleField.varchar("col_nullable_varchar_const255", 255), 50)),
             1)
 
+    val string_table = Table("string_table", listOf(
+            SimpleField.fixedLength("id", FixedLengthType.TYPE_BIGINT),
+            SimpleField.varchar("col_string_max70000", 70000),
+            CompoundField.nullable(SimpleField.varchar("col_string_const70000", 70000), 20)),
+            1)
+
     val varchar300_table = Table("varchar300_table", listOf(
             SimpleField.fixedLength("id", FixedLengthType.TYPE_BIGINT),
             SimpleField.varchar("col_varchar_max300", 300),
             SimpleField.varchar("col_varchar_const300", 300),
             CompoundField.nullable(SimpleField.varchar("col_nullable_varchar_max300", 300), 50),
             CompoundField.nullable(SimpleField.varchar("col_nullable_varchar_const300", 300), 50)),
+            1)
+
+    val varchar300_table2 = Table("varchar300_table", listOf(
+            SimpleField.fixedLength("id", FixedLengthType.TYPE_BIGINT),
+            SimpleField.char("col_varchar_max300", 100),
+            SimpleField.char("col_varchar_const300", 100),
+            CompoundField.nullable(SimpleField.char("col_nullable_varchar_max300", 100), 50),
+            CompoundField.nullable(SimpleField.char("col_nullable_varchar_const300", 100), 50)),
+            1)
+
+    val varchar300_table3 = Table("varchar300_table", listOf(
+            SimpleField.fixedLength("id", FixedLengthType.TYPE_BIGINT),
+            CompoundField.nullable(SimpleField.char("col_varchar_max300", 100),50),
+            CompoundField.nullable(SimpleField.char("col_varchar_const300", 100),50),
+            CompoundField.nullable(SimpleField.char("col_nullable_varchar_max300", 100), 50),
+            CompoundField.nullable(SimpleField.char("col_nullable_varchar_const300", 100), 50)),
             1)
 
     val char_table2 = Table("char_table2", listOf(
@@ -126,4 +148,5 @@ object Tables {
             CompoundField.nullable(SimpleField.varchar("col_nullable_varchar_max255", 100), 50),
             CompoundField.nullable(SimpleField.varchar("col_nullable_varchar_const255", 100), 50)),
             1)
+
 }

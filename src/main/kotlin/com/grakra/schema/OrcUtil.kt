@@ -289,7 +289,7 @@ object OrcUtil {
         val nthItem = nthItemOfColumn(vector, desc)
         return { i ->
             if (!vector.noNulls && vector.isNull[i]) {
-                "NULL"
+                "\\N"
             } else {
                 nthItem(i)
             }

@@ -357,7 +357,7 @@ class VectorizedPerformanceTest : DorisDBRemoteITest() {
     @Test
     fun f(){
         val a = RandUtil.generateVarchar(255,255)
-        (1..10).forEach{println(String(a()))}
+        (1..10).forEach{println(String(a()).length)}
     }
 
 }

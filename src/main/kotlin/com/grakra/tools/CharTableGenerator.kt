@@ -55,10 +55,8 @@ fun main(vararg args: String) {
                     numRowsPerFile,
                     4096,
                     "id" to idGen,
-                    "col_char255" to char255Gen,
-                    "col_nullable_char255" to char255Gen,
-                    "col_varchar65535" to varcharTenth65535Gen,
-                    "col_nullable_varchar65535" to varcharTenth65535Gen
+                    "col_varchar_const255" to char255Gen,
+                    "col_nullable_varchar_const255" to char255Gen
             )
         }.addListener {
             atomicInt.decrementAndGet()

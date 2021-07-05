@@ -16,6 +16,6 @@ class ParquetCharCrashTest : DorisDBRemoteITest() {
                 "/rpf/char_tables/char_table_data_0003.orc"
         )
         val hiveClient = HiveClient("127.0.0.1:10000/default", "grakra", "")
-        Tables.char_table.createHiveParquetScripts(hiveClient, orcFiles, "orc")
+        Tables.char_table.createHiveParquetScripts(hiveClient, orcFiles, "csv")
     }
 }

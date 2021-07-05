@@ -105,9 +105,25 @@ object Tables {
 
     val char_table = Table("char_table", listOf(
             SimpleField.fixedLength("id", FixedLengthType.TYPE_BIGINT),
-            SimpleField.varchar("col_varchar_max255", 255),
-            SimpleField.varchar("col_varchar_const255", 255),
+            SimpleField.varchar("col_varchar_max300", 255),
+            SimpleField.varchar("col_varchar_const300", 255),
             CompoundField.nullable(SimpleField.varchar("col_nullable_varchar_max255", 255), 50),
             CompoundField.nullable(SimpleField.varchar("col_nullable_varchar_const255", 255), 50)),
+            1)
+
+    val varchar300_table = Table("varchar300_table", listOf(
+            SimpleField.fixedLength("id", FixedLengthType.TYPE_BIGINT),
+            SimpleField.varchar("col_varchar_max300", 300),
+            SimpleField.varchar("col_varchar_const300", 300),
+            CompoundField.nullable(SimpleField.varchar("col_nullable_varchar_max300", 300), 50),
+            CompoundField.nullable(SimpleField.varchar("col_nullable_varchar_const300", 300), 50)),
+            1)
+
+    val char_table2 = Table("char_table2", listOf(
+            SimpleField.fixedLength("id", FixedLengthType.TYPE_BIGINT),
+            CompoundField.nullable(SimpleField.varchar("col_varchar_max255", 100), 50),
+            CompoundField.nullable(SimpleField.varchar("col_varchar_const255", 100), 50),
+            CompoundField.nullable(SimpleField.varchar("col_nullable_varchar_max255", 100), 50),
+            CompoundField.nullable(SimpleField.varchar("col_nullable_varchar_const255", 100), 50)),
             1)
 }

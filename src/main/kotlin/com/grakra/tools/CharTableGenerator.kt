@@ -23,9 +23,9 @@ fun main(vararg args: String) {
     val parallelism = args[3].toInt()
 
     //val table = Tables.char_table
-    val table = Tables.char_table
+    val table = Tables.varchar300_table
     val idGen = Util.generateLongCounter()
-    var char255Gen = RandUtil.generateVarchar(255, 255)
+    var char300Gen = RandUtil.generateVarchar(300, 300)
 
     val rand = Random()
     var varchar65535Gen = RandUtil.generateVarchar(65535, 65535)
@@ -55,8 +55,8 @@ fun main(vararg args: String) {
                     numRowsPerFile,
                     4096,
                     "id" to idGen,
-                    "col_varchar_const255" to char255Gen,
-                    "col_nullable_varchar_const255" to char255Gen
+                    "col_varchar_const300" to char300Gen,
+                    "col_nullable_varchar_const300" to char300Gen
             )
         }.addListener {
             atomicInt.decrementAndGet()

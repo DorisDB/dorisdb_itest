@@ -12,12 +12,12 @@ class ParquetCharCrashTest : DorisDBRemoteITest() {
     @Test
     fun orc_to_parquet_via_hive() {
         val orcFiles = arrayOf(
-                "/rpf/varchar300_csv/varchar300_0001.csv",
-                "/rpf/varchar300_csv/varchar300_0002.csv"
+                "/rpf/string_table/string_table_0001.orc",
+                "/rpf/string_table/string_table_0002.orc"
         )
 
         val hiveClient = HiveClient("127.0.0.1:10000/default", "grakra", "")
-        Tables.varchar300_table.createHiveParquetScripts(hiveClient, orcFiles, "csv")
+        Tables.string_table.createHiveParquetScripts(hiveClient, orcFiles, "orc")
     }
 
     @Test
@@ -63,5 +63,23 @@ class ParquetCharCrashTest : DorisDBRemoteITest() {
         admin_set_vectorized_load_enable(true)
         create_table(db, Tables.varchar300_table3)
         broker_load(db, Tables.varchar300_table3, "/user/hive/warehouse/parquet_varchar300_table/*")
+    }
+
+    @Test
+    fun load_test5(){
+        val db = "load_test5"
+        create_db(db)
+        admin_set_vectorized_load_enable(true)
+        create_table(db, Tables.string_table2)
+        broker_load(db, Tables.string_table2, "/user/hive/warehouse/parquet_string_table/*")
+    }
+
+    @Test
+    fun load_test6(){
+        val db = "load_test5"
+        create_db(db)
+        admin_set_vectorized_load_enable(true)
+        create_table(db, Tables.string_table3)
+        broker_load(db, Tables.string_table3, "/user/hive/warehouse/parquet_string_table/*")
     }
 }

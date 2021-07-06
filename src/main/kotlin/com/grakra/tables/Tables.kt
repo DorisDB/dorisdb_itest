@@ -117,6 +117,17 @@ object Tables {
             CompoundField.nullable(SimpleField.varchar("col_string_const70000", 70000), 20)),
             1)
 
+    val string_table2 = Table("string_table2", listOf(
+            SimpleField.fixedLength("id", FixedLengthType.TYPE_BIGINT),
+            SimpleField.varchar("col_string_max70000", 100),
+            CompoundField.nullable(SimpleField.varchar("col_string_const70000", 100), 20)),
+            1)
+    val string_table3 = Table("string_table2", listOf(
+            SimpleField.fixedLength("id", FixedLengthType.TYPE_BIGINT),
+            CompoundField.nullable(SimpleField.varchar("col_string_max70000", 100),20),
+            CompoundField.nullable(SimpleField.varchar("col_string_const70000", 100), 20)),
+            1)
+
     val varchar300_table = Table("varchar300_table", listOf(
             SimpleField.fixedLength("id", FixedLengthType.TYPE_BIGINT),
             SimpleField.varchar("col_varchar_max300", 300),

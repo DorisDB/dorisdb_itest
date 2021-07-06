@@ -53,7 +53,7 @@ fun main(vararg args: String) {
                     table.keyFields(),
                     table.valueFields(emptySet()),
                     numRowsPerFile,
-                    4096,
+                    8193,
                     "id" to idGen,
                     "col_string_max70000" to varcharTenth70000Gen,
                     "col_string_const70000" to varcharTenth70000Gen

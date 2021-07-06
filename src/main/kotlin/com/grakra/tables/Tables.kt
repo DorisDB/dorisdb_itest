@@ -124,7 +124,7 @@ object Tables {
             1)
     val string_table3 = Table("string_table2", listOf(
             SimpleField.fixedLength("id", FixedLengthType.TYPE_BIGINT),
-            CompoundField.nullable(SimpleField.varchar("col_string_max70000", 100),20),
+            CompoundField.nullable(SimpleField.varchar("col_string_max70000", 100), 20),
             CompoundField.nullable(SimpleField.varchar("col_string_const70000", 100), 20)),
             1)
 
@@ -146,8 +146,8 @@ object Tables {
 
     val varchar300_table3 = Table("varchar300_table", listOf(
             SimpleField.fixedLength("id", FixedLengthType.TYPE_BIGINT),
-            CompoundField.nullable(SimpleField.char("col_varchar_max300", 100),50),
-            CompoundField.nullable(SimpleField.char("col_varchar_const300", 100),50),
+            CompoundField.nullable(SimpleField.char("col_varchar_max300", 100), 50),
+            CompoundField.nullable(SimpleField.char("col_varchar_const300", 100), 50),
             CompoundField.nullable(SimpleField.char("col_nullable_varchar_max300", 100), 50),
             CompoundField.nullable(SimpleField.char("col_nullable_varchar_const300", 100), 50)),
             1)
@@ -159,5 +159,14 @@ object Tables {
             CompoundField.nullable(SimpleField.varchar("col_nullable_varchar_max255", 100), 50),
             CompoundField.nullable(SimpleField.varchar("col_nullable_varchar_const255", 100), 50)),
             1)
+
+    val small_char_table = Table("small_char_table", listOf(
+            SimpleField.fixedLength("id", FixedLengthType.TYPE_BIGINT),
+            SimpleField.char("col_char4", 4),
+            SimpleField.char("col_char8", 4),
+            CompoundField.nullable(SimpleField.char("col_nullable_char4", 4), 50),
+            CompoundField.nullable(SimpleField.char("col_nullable_char8", 4), 50)),
+            1)
+
 
 }

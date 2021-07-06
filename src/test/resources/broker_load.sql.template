@@ -10,6 +10,6 @@ WITH BROKER hdfs_broker ("username"="root", "password"="")
 PROPERTIES
 (
     "timeout" = "3600",
-    "max_filter_ratio" = "0.5"
+    "max_filter_ratio" = "0.99"
 );
 >>

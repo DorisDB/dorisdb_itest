@@ -91,7 +91,6 @@ abstract sealed class SimpleField(override val name: String) : Field(name) {
                 FixedLengthType.TYPE_DATETIME -> "TIMESTAMP"
                 else -> sqlType()
             }
-            is CharField -> "STRING"
             is VarCharField -> "STRING"
             is DecimalField -> "DECIMAL(${this.precision}, ${this.scale})"
             else -> sqlType()

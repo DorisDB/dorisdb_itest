@@ -23,20 +23,10 @@ fun main(vararg args: String) {
     val parallelism = args[3].toInt()
 
     //val table = Tables.char_table
-    val table = Tables.string_table
+    val table = Tables.small_char_table
     val idGen = Util.generateLongCounter()
-    var char300Gen = RandUtil.generateVarchar(300, 300)
-
-    val rand = Random()
-    var varchar70000Gen = RandUtil.generateVarchar(70000, 70000)
-    val varcharMax255Gen = RandUtil.generateVarchar(0, 255)
-    val varcharTenth70000Gen: () -> ByteArray = {
-        if (rand.nextInt(100) < 10) {
-            varchar70000Gen()
-        } else {
-            varcharMax255Gen()
-        }
-    }
+    val char4Gen = RandUtil.generateVarchar(4, 4)
+    val char8Gen = RandUtil.generateVarchar(8, 8)
 
     val houseKeeper = HouseKeeper()
     val atomicInt = AtomicInteger(0)
@@ -53,10 +43,12 @@ fun main(vararg args: String) {
                     table.keyFields(),
                     table.valueFields(emptySet()),
                     numRowsPerFile,
-                    8193,
+                    65535,
                     "id" to idGen,
-                    "col_string_max70000" to varcharTenth70000Gen,
-                    "col_string_const70000" to varcharTenth70000Gen
+                    "col_char4" to char4Gen,
+                    "col_char8" to char8Gen,
+                    "col_nullable_char4" to char4Gen,
+                    "col_nullable_char8" to char8Gen
             )
         }.addListener {
             atomicInt.decrementAndGet()
